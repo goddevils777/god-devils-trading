@@ -1,0 +1,320 @@
+/* Signals Module Styles */
+.signals-container {
+    max-width: 100%;
+}
+
+.signals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.signals-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.signals-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-primary);
+}
+
+
+
+.status-indicator {
+    font-size: 8px;
+    animation: pulse-glow 2s infinite;
+}
+
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Monitoring Status */
+.monitoring-status {
+    text-align: center;
+    padding: 12px;
+    margin-bottom: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+}
+
+.monitoring-status span {
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+.monitoring-status .signal-received {
+    color: var(--yellow-primary);
+    font-weight: 600;
+    animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Filters */
+.filters-container {
+    margin-bottom: 24px;
+}
+
+.type-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.time-filters {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.time-filter-btn {
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.filter-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+
+.filter-btn.active {
+    background: var(--yellow-primary);
+    color: #000;
+    border-color: var(--yellow-primary);
+}
+
+.time-filter-btn {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.time-filter-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+
+.time-filter-btn.active {
+    background: var(--yellow-primary);
+    color: #000;
+    border-color: var(--yellow-primary);
+}
+
+/* Signal Cards */
+.signal-card {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    margin-bottom: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    border-left-width: 3px;
+}
+
+.signal-card.long {
+    border-left-color: var(--green-primary);
+}
+
+.signal-card.short {
+    border-left-color: var(--red-primary);
+}
+
+.signal-icon {
+    font-size: 16px;
+    margin-right: 12px;
+}
+
+.signal-info {
+    flex: 1;
+}
+
+.signal-type {
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.signal-card.long .signal-type {
+    color: var(--green-primary);
+}
+
+.signal-card.short .signal-type {
+    color: var(--red-primary);
+}
+
+.signal-time {
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.signal-session {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.signal-symbol {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.signal-status {
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+/* No Signals State */
+.no-signals {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+}
+
+.no-signals p {
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .type-filters,
+    .time-filters {
+        justify-content: center;
+    }
+    
+    .time-filter-btn {
+        font-size: 10px;
+        padding: 5px 8px;
+    }
+}
+
+.signals-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.signals-icon {
+    color: var(--yellow-primary);
+}
+
+.search-icon {
+    animation: search-scan 1.5s infinite ease-in-out;
+    margin-right: 8px;
+    transform-origin: center;
+}
+
+@keyframes search-scan {
+    0% { 
+        transform: scale(1) rotate(0deg);
+        opacity: 0.6;
+    }
+    25% { 
+        transform: scale(1.15) rotate(5deg);
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.2) rotate(0deg);
+        opacity: 0.8;
+    }
+    75% { 
+        transform: scale(1.15) rotate(-5deg);
+        opacity: 1;
+    }
+    100% { 
+        transform: scale(1) rotate(0deg);
+        opacity: 0.6;
+    }
+}
+
+/* Добавим пульсацию точек после текста */
+.monitoring-status span::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60% { content: '...'; }
+    80%, 100% { content: ''; }
+}
+
+.delete-signal-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+    margin-left: 8px;
+    opacity: 0;
+}
+
+.signal-card:hover .delete-signal-btn {
+    opacity: 1;
+}
+
+.delete-signal-btn:hover {
+    background: var(--red-primary);
+    border-color: var(--red-primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.delete-signal-btn svg {
+    pointer-events: none;
+}

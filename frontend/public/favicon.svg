@@ -1,0 +1,15 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#1a1a1a"/>
+  
+  <!-- Trading chart line -->
+  <path d="M4 20h4l3-6 4 12 3-6h4" stroke="#fcd535" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Angel signal -->
+  <circle cx="24" cy="8" r="3" fill="#0ecb81"/>
+  <text x="24" y="12" text-anchor="middle" fill="white" font-size="8">😇</text>
+  
+  <!-- Devil signal -->
+  <circle cx="8" cy="24" r="3" fill="#f6465d"/>
+  <text x="8" y="28" text-anchor="middle" fill="white" font-size="8">😈</text>
+</svg>

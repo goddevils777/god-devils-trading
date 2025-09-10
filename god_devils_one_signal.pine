@@ -1,0 +1,204 @@
+//@version=6
+indicator('God & Devils Strategy 😇 😈', overlay=true)
+
+// ========== ФРАКТАЛЫ ==========
+var GRP1 = "••••••• FRACTALS •••••••"
+showFractals = input.bool(true, title='Show fractal points?', group=GRP1)
+
+isBWFractal(mode, n) =>
+    ret = mode == 'Buy' ? high[n - 2] < high[n] and high[n - 1] < high[n] and high[n + 1] < high[n] and high[n + 2] < high[n] : mode == 'Sell' ? low[n - 2] > low[n] and low[n - 1] > low[n] and low[n + 1] > low[n] and low[n + 2] > low[n] : false
+
+isFractalHigh(i) => isBWFractal('Buy', i + 1)
+isFractalLow(i) => isBWFractal('Sell', i + 1)
+
+plotshape(showFractals and isFractalHigh(1), title='Fractal High', style=shape.triangledown, location=location.abovebar, color=color.red, offset=-2, size=size.auto)
+plotshape(showFractals and isFractalLow(1), title='Fractal Low', style=shape.triangleup, location=location.belowbar, color=color.lime, offset=-2, size=size.auto)
+
+// ========== ЛИНИИ ЛИКВИДНОСТИ ==========
+var GRP2 = "••••••• LIQUIDITY LINES •••••••"
+showLines = input.bool(true, title='Show liquidity lines?', group=GRP2)
+liqLineWidth = input.int(2, title="Line Width", minval=1, maxval=10, group=GRP2)
+liqLineBars = input.int(20, title="Line Length (bars)", minval=5, maxval=100, group=GRP2)
+
+liqPivotHigh = ta.pivothigh(4, 4)
+liqPivotLow = ta.pivotlow(4, 4)
+
+// Сохраняем уровни линий ликвидности
+var float activeHighLine = na
+var float activeLowLine = na
+
+if showLines and not na(liqPivotHigh)
+    liqLineEnd = time[4] + (time[1] - time[2]) * liqLineBars
+    line.new(time[4], high[4], liqLineEnd, high[4], color=color.blue, width=liqLineWidth, xloc=xloc.bar_time)
+    activeHighLine := high[4]
+
+if showLines and not na(liqPivotLow)
+    liqLineEnd = time[4] + (time[1] - time[2]) * liqLineBars
+    line.new(time[4], low[4], liqLineEnd, low[4], color=color.red, width=liqLineWidth, xloc=xloc.bar_time)
+    activeLowLine := low[4]
+
+// ========== MACD И ЦВЕТА БАРОВ ==========
+var GRP3 = "••••••• MACD COLORS •••••••"
+macdSource = input(high, title="Source", group=GRP3)
+macdFastLength = input.int(7, minval=1, title="MACD fast moving average", group=GRP3)
+macdSlowLength = input.int(7, minval=1, title="MACD slow moving average", group=GRP3)
+macdSignalLength = input.int(7, minval=1, title="MACD signal line moving average", group=GRP3)
+macdVeryslowLength = input.int(7, minval=1, title="Very slow moving average", group=GRP3)
+switch1 = input.bool(true, title="Enable Bar Color?", group=GRP3)
+switch2 = input.bool(true, title="Enable Moving Averages?", group=GRP3)
+switch3 = input.bool(true, title="Enable Background Color?", group=GRP3)
+switch4 = input.bool(true, title="Enable Blue Bar Alerts?", group=GRP3)
+
+// Calculation
+fastMA = ta.sma(macdSource, macdFastLength)
+slowMA = ta.sma(macdSource, macdSlowLength)
+veryslowMA = ta.sma(macdSource, macdVeryslowLength)
+macd = fastMA - slowMA
+signal = ta.sma(macd, macdSignalLength)
+hist = macd - signal
+
+// Colors
+MAtrendcolor = ta.change(veryslowMA) > 0 ? color.green : color.red
+trendcolor = fastMA > slowMA and ta.change(veryslowMA) > 0 and close > slowMA ? color.green : fastMA < slowMA and ta.change(veryslowMA) < 0 and close < slowMA ? color.red : color.blue
+bartrendcolor = close > fastMA and close > slowMA and close > veryslowMA and ta.change(slowMA) > 0 ? color.green : close < fastMA and close < slowMA and close < veryslowMA and ta.change(slowMA) < 0 ? color.red : color.blue
+backgroundcolor = slowMA > veryslowMA and ta.crossover(hist, 0) and macd > 0 and fastMA > slowMA and close[macdSlowLength] > veryslowMA ? color.new(color.green, 80) : slowMA < veryslowMA and ta.crossunder(hist, 0) and macd < 0 and fastMA < slowMA and close[macdSlowLength] < veryslowMA ? color.new(color.red, 80) : na
+
+bgcolor(switch3 ? backgroundcolor : na)
+barcolor(switch1 ? bartrendcolor : na)
+
+// Blue Bar Alert
+isBlueBar = bartrendcolor == color.blue
+isNewBlueBar = isBlueBar and bartrendcolor[1] != color.blue
+
+if switch4 and isNewBlueBar
+    alert("🔵 Blue Bar Detected!", alert.freq_once_per_bar)
+
+// Moving Averages
+F = plot(switch2 ? fastMA : na, color=trendcolor, title="Fast MA")
+S = plot(switch2 ? slowMA : na, color=trendcolor, linewidth=2, title="Slow MA")
+V = plot(switch2 ? veryslowMA : na, color=MAtrendcolor, linewidth=4, title="Very Slow MA")
+fill(F, V, color=color.new(color.gray, 90))
+
+// ========== ТОРГОВЫЕ СИГНАЛЫ ==========
+var GRP4 = "••••••• TRADE SIGNALS •••••••"
+enableSignals = input.bool(true, title="Enable Trade Signals?", group=GRP4)
+
+// ========== НАСТРОЙКИ СЕССИЙ ==========
+var GRP5 = "••••••• TRADING SESSIONS •••••••"
+enableSessions = input.bool(true, title="Enable Session Filter?", group=GRP5)
+londonStart = input.int(10, title="London Start Hour", minval=0, maxval=23, group=GRP5)
+londonEnd = input.int(15, title="London End Hour", minval=0, maxval=23, group=GRP5)
+nyStart = input.int(15, title="New York Start Hour", minval=0, maxval=23, group=GRP5)
+nyEnd = input.int(22, title="New York End Hour", minval=0, maxval=23, group=GRP5)
+
+// Определение текущих сессий
+currentHour = hour(time, "GMT+3")  // GMT+3 пояс
+isLondonSession = currentHour >= londonStart and currentHour < londonEnd
+isNySession = currentHour >= nyStart and currentHour < nyEnd
+isTradeSession = isLondonSession or isNySession
+
+// Переменные для отслеживания первых сигналов в сессиях
+var bool londonSignalGiven = false
+var bool nySignalGiven = false
+
+// Сброс флагов при смене дней
+if ta.change(dayofweek) != 0
+    londonSignalGiven := false
+    nySignalGiven := false
+
+// Сброс флагов при начале новых сессий
+if isLondonSession and not isLondonSession[1]  // начало лондонской сессии
+    londonSignalGiven := false
+if isNySession and not isNySession[1]  // начало нью-йоркской сессии  
+    nySignalGiven := false
+
+// Переменные состояния - СТРОГИЙ АЛГОРИТМ
+var bool lineBreakConfirmed_HIGH = false  // Подтверждено закрепление ниже верхней линии
+var bool lineBreakConfirmed_LOW = false   // Подтверждено закрепление выше нижней линии
+
+if enableSignals
+    // ЭТАП 1: Проверка пересечения и ЗАКРЕПЛЕНИЯ
+    
+    // Сброс состояний при новых линиях ликвидности
+    if not na(liqPivotHigh)
+        lineBreakConfirmed_HIGH := false
+        lineBreakConfirmed_LOW := false
+    if not na(liqPivotLow)  
+        lineBreakConfirmed_LOW := false
+        lineBreakConfirmed_HIGH := false
+    
+    // ЗАКРЕПЛЕНИЕ НИЖЕ верхней линии (для SHORT)
+    if not na(activeHighLine) and not lineBreakConfirmed_HIGH
+        // Условие: свеча пересекла и ЗАКРЫЛАСЬ ниже линии
+        if close < activeHighLine and high >= activeHighLine
+            lineBreakConfirmed_HIGH := true
+            lineBreakConfirmed_LOW := false  // сброс противоположного
+    
+    // ЗАКРЕПЛЕНИЕ ВЫШЕ нижней линии (для LONG)
+    if not na(activeLowLine) and not lineBreakConfirmed_LOW
+        // Условие: свеча пересекла и ЗАКРЫЛАСЬ выше линии  
+        if close > activeLowLine and low <= activeLowLine
+            lineBreakConfirmed_LOW := true
+            lineBreakConfirmed_HIGH := false  // сброс противоположного
+
+// ЭТАП 2: Базовые сигналы (без фильтра сессий)
+baseShortSignal = enableSignals and lineBreakConfirmed_HIGH and bartrendcolor == color.blue and bartrendcolor[1] != color.blue
+baseLongSignal = enableSignals and lineBreakConfirmed_LOW and bartrendcolor == color.blue and bartrendcolor[1] != color.blue
+
+// ЭТАП 3: Применение фильтра сессий и проверка первого сигнала
+shortSignal = false
+longSignal = false
+
+if enableSessions
+    // Фильтр сессий: сигналы только во время торговых сессий
+    if baseShortSignal and isTradeSession
+        if isLondonSession and not londonSignalGiven
+            shortSignal := true
+            londonSignalGiven := true
+        else if isNySession and not nySignalGiven
+            shortSignal := true
+            nySignalGiven := true
+    
+    if baseLongSignal and isTradeSession
+        if isLondonSession and not londonSignalGiven
+            longSignal := true
+            londonSignalGiven := true
+        else if isNySession and not nySignalGiven
+            longSignal := true
+            nySignalGiven := true
+else
+    // Без фильтра сессий - обычные сигналы
+    shortSignal := baseShortSignal
+    longSignal := baseLongSignal
+
+// ЭТАП 4: Сброс состояния ТОЛЬКО после сигнала или нарушения алгоритма
+if shortSignal
+    lineBreakConfirmed_HIGH := false
+    
+if longSignal
+    lineBreakConfirmed_LOW := false
+
+// Сброс при нарушении алгоритма (если не синяя свеча появилась)
+if lineBreakConfirmed_HIGH and bartrendcolor != color.blue and bartrendcolor[1] == color.blue
+    lineBreakConfirmed_HIGH := false
+    
+if lineBreakConfirmed_LOW and bartrendcolor != color.blue and bartrendcolor[1] == color.blue  
+    lineBreakConfirmed_LOW := false
+
+// Алерты
+if shortSignal
+    alert("😈 SHORT SIGNAL!", alert.freq_once_per_bar)
+if longSignal
+    alert("😇 LONG SIGNAL!", alert.freq_once_per_bar)
+
+// Визуальные сигналы
+plotchar(longSignal, title='Long Signal', char='😇', location=location.belowbar, color=color.green, size=size.small)
+plotchar(shortSignal, title='Short Signal', char='😈', location=location.abovebar, color=color.red, size=size.small)
+
+// ОТЛАДКА состояний
+plotchar(lineBreakConfirmed_HIGH, title='Waiting Short', char='S', location=location.abovebar, color=color.orange, size=size.tiny)
+plotchar(lineBreakConfirmed_LOW, title='Waiting Long', char='L', location=location.belowbar, color=color.orange, size=size.tiny)
+
+// Отображение активных сессий (фон)
+bgcolor(enableSessions and isLondonSession ? color.new(color.yellow, 95) : na, title="London Session")
+bgcolor(enableSessions and isNySession ? color.new(color.blue, 95) : na, title="NY Session")
