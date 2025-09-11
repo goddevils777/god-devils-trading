@@ -9,7 +9,7 @@ export class SignalsWebSocket {
 
     start() {
         this.wss = new WebSocketServer({ server: this.server });
-        
+
         this.wss.on('connection', (ws, req) => {
             console.log('📱 New WebSocket connection');
             this.clients.add(ws);
@@ -26,7 +26,7 @@ export class SignalsWebSocket {
                 try {
                     const message = JSON.parse(data);
                     console.log('📨 Received:', message);
-                    
+
                     if (message.type === 'ping') {
                         ws.send(JSON.stringify({
                             type: 'pong',
@@ -51,7 +51,7 @@ export class SignalsWebSocket {
             });
         });
 
-        console.log(`🚀 WebSocket server running on port ${this.port}`);
+        console.log(`🚀 WebSocket server running on same port as HTTP`);
     }
 
     // Отправка сигнала всем подключенным клиентам
@@ -59,9 +59,9 @@ export class SignalsWebSocket {
         const message = JSON.stringify({
             type: 'signal',
             data: {
-                id: Date.now().toString(),
-                type: signal.type, // 'long' или 'short'
-                timestamp: new Date().toISOString(),
+                id: signal.id || Date.now().toString(),
+                type: signal.type,
+                createdAt: signal.createdAt || new Date().toISOString(),
                 session: this.getCurrentSession(),
                 status: 'new',
                 symbol: signal.symbol || 'Unknown',
@@ -87,7 +87,7 @@ export class SignalsWebSocket {
     getCurrentSession() {
         const now = new Date();
         const hour = now.getUTCHours() + 3; // GMT+3
-        
+
         if (hour >= 10 && hour < 15) {
             return 'London';
         } else if (hour >= 15 && hour < 22) {
@@ -105,7 +105,7 @@ export class SignalsWebSocket {
             price: 1.0950 + (Math.random() - 0.5) * 0.01,
             confidence: Math.floor(Math.random() * 30) + 70
         };
-        
+
         return this.broadcastSignal(signal);
     }
 
@@ -113,7 +113,6 @@ export class SignalsWebSocket {
     getStats() {
         return {
             connectedClients: this.clients.size,
-            port: this.port,
             uptime: process.uptime()
         };
     }

@@ -27,20 +27,20 @@ class Database {
 
     createTables() {
         const createSignalsTable = `
-            CREATE TABLE IF NOT EXISTS signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                type TEXT NOT NULL CHECK(type IN ('long', 'short')),
-                symbol TEXT NOT NULL DEFAULT 'UNKNOWN',
-                price REAL NOT NULL DEFAULT 0,
-                session TEXT NOT NULL DEFAULT 'Unknown',
-                confidence INTEGER DEFAULT 75,
-                signalNumber INTEGER DEFAULT 1,
-                source TEXT DEFAULT 'TradingView',
-                status TEXT DEFAULT 'new' CHECK(status IN ('new', 'active', 'closed')),
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `;
+        CREATE TABLE IF NOT EXISTS signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL CHECK(type IN ('long', 'short')),
+            symbol TEXT NOT NULL DEFAULT 'UNKNOWN',
+            price REAL NOT NULL DEFAULT 0,
+            session TEXT NOT NULL DEFAULT 'Unknown',
+            confidence INTEGER DEFAULT 75,
+            signalNumber INTEGER DEFAULT 1,
+            source TEXT DEFAULT 'TradingView',
+            status TEXT DEFAULT 'new' CHECK(status IN ('new', 'active', 'closed')),
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `;
 
         this.db.run(createSignalsTable, (err) => {
             if (err) {
@@ -54,9 +54,9 @@ class Database {
     saveSignal(signal) {
         return new Promise((resolve, reject) => {
             const query = `
-                INSERT INTO signals (type, symbol, price, session, confidence, signalNumber, source, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+    INSERT INTO signals (type, symbol, price, session, confidence, signalNumber, source, status, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
             const values = [
                 signal.type,
@@ -66,7 +66,8 @@ class Database {
                 signal.confidence,
                 signal.signalNumber || 1,
                 signal.source || 'TradingView',
-                signal.status || 'new'
+                signal.status || 'new',
+               new Date().toISOString()
             ];
 
             this.db.run(query, values, function (err) {

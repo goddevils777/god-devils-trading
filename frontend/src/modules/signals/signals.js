@@ -87,9 +87,9 @@ export class SignalsModule {
                 <div class="signal-session">${signal.session}</div>
                 <div class="signal-symbol">${signal.symbol}</div>
             </div>
-            <div class="signal-status ${signal.status}">
-                ${signal.status}
-            </div>
+                <div class="signal-status ${this.getSignalStatus(signal)}">
+                    ${this.getSignalStatusText(signal)}
+                </div>
             <button class="delete-signal-btn" data-signal-id="${signal.id}" title="Удалить сигнал">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                     <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -384,6 +384,30 @@ export class SignalsModule {
     }
 
     formatTime(timestamp) {
-        return new Date(timestamp).toLocaleString('ru-RU');
+        const date = new Date(timestamp);
+        return date.toLocaleString('ru-RU', {
+            timeZone: 'Europe/Kiev',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    getSignalStatus(signal) {
+        const signalTime = new Date(signal.createdAt);
+        const now = new Date();
+        const diffMinutes = (now - signalTime) / (1000 * 60);
+
+        return diffMinutes <= 15 ? 'new' : 'active';
+    }
+
+    getSignalStatusText(signal) {
+        const signalTime = new Date(signal.createdAt);
+        const now = new Date();
+        const diffMinutes = (now - signalTime) / (1000 * 60);
+
+        return diffMinutes <= 15 ? 'NEW' : '';
     }
 }

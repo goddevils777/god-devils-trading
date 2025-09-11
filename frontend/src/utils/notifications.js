@@ -91,6 +91,55 @@ export class NotificationManager {
         });
     }
 
+    showNewRrInput() {
+        if (document.getElementById('newRrInput')) return; // Уже показано
+
+        const addBtn = document.getElementById('addRrBtn');
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.id = 'newRrInput';
+        input.step = '0.1';
+        input.placeholder = 'RR';
+        input.className = 'new-rr-input-inline';
+
+        addBtn.parentNode.insertBefore(input, addBtn.nextSibling);
+        input.focus();
+
+        // Обработчики для нового поля
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.processNewRr();
+            }
+            if (e.key === 'Escape') {
+                this.hideNewRrInput();
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => this.hideNewRrInput(), 150);
+        });
+    }
+
+    hideNewRrInput() {
+        const input = document.getElementById('newRrInput');
+        if (input) {
+            input.remove();
+        }
+    }
+
+    processNewRr() {
+        const input = document.getElementById('newRrInput');
+        const newValue = input.value.trim();
+
+        if (newValue && !isNaN(newValue)) {
+            this.addCustomRr(parseFloat(newValue));
+            this.hideNewRrInput();
+        } else if (newValue) {
+            notifications.error('Введите корректное число');
+        }
+    }
+
     confirm(message, title = 'Подтверждение', confirmText = 'Да', cancelText = 'Отмена') {
         return new Promise((resolve) => {
             // Создаем модальное окно
@@ -136,13 +185,19 @@ export class NotificationManager {
             backdrop.addEventListener('click', () => closeModal(false));
 
             // ESC для закрытия
-            const handleEsc = (e) => {
+            // ESC и Enter для закрытия
+            const handleKeydown = (e) => {
                 if (e.key === 'Escape') {
-                    document.removeEventListener('keydown', handleEsc);
+                    document.removeEventListener('keydown', handleKeydown);
                     closeModal(false);
                 }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.removeEventListener('keydown', handleKeydown);
+                    closeModal(true);
+                }
             };
-            document.addEventListener('keydown', handleEsc);
+            document.addEventListener('keydown', handleKeydown);
         });
     }
 }

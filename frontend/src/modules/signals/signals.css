@@ -318,3 +318,24 @@
 .delete-signal-btn svg {
     pointer-events: none;
 }
+
+.signal-status.new {
+    background: var(--yellow-primary);
+    color: #000;
+    animation: pulse-glow 2s infinite;
+    font-weight: 600;
+    border: 1px solid var(--yellow-hover);
+}
+
+@keyframes pulse-glow {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 5px rgba(252, 213, 53, 0.5);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.02);
+        box-shadow: 0 0 15px rgba(252, 213, 53, 0.8);
+    }
+}

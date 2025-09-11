@@ -20,16 +20,3 @@ primary_region = "fra"
   method = "GET"
   timeout = "5s"
   path = "/api/health"
-
-# WebSocket support
-[[services]]
-  internal_port = 8081
-  protocol = "tcp"
-
-  [[services.ports]]
-    port = 443
-    handlers = ["tls", "http"]
-
-  [[services.ports]]
-    port = 80
-    handlers = ["http"]
