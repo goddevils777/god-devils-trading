@@ -92,11 +92,11 @@ export class BacktestModule {
                                 <div class="rr-buttons" id="rrButtonsContainer">
                                     <button type="button" class="add-rr-btn" id="addRrBtn">+</button>
                                     <button type="button" class="remove-rr-btn" id="removeRrBtn">−</button>
-                                    <label class="mini-toggle-switch">
-                                        <input type="checkbox" id="randomMode">
-                                        <span class="mini-toggle-slider"></span>
-                                        <span class="mini-toggle-label">R</span>
-                                    </label>
+<span class="mini-toggle-label">R</span>
+<label class="mini-toggle-switch">
+    <input type="checkbox" id="randomMode">
+    <span class="mini-toggle-slider"></span>
+</label>
                                 </div>
                                 <div class="rr-input-row">
                                     <input type="number" name="result" step="0.1" value="" placeholder="0" required>
@@ -351,35 +351,7 @@ export class BacktestModule {
         }
     }
 
-    showNewRrInput() {
-        if (document.getElementById('newRrInput')) return;
 
-        const addBtn = document.getElementById('addRrBtn');
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.id = 'newRrInput';
-        input.step = '0.1';
-        input.placeholder = 'RR';
-        input.className = 'new-rr-input-inline';
-
-        // Вставляем сразу после кнопки +
-        addBtn.parentNode.insertBefore(input, addBtn.nextSibling);
-        input.focus();
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.processNewRr();
-            }
-            if (e.key === 'Escape') {
-                this.hideNewRrInput();
-            }
-        });
-
-        input.addEventListener('blur', () => {
-            setTimeout(() => this.hideNewRrInput(), 150);
-        });
-    }
 
     addCustomRr(value) {
         if (!this.rrValues.includes(value.toString())) {
@@ -618,16 +590,24 @@ export class BacktestModule {
     }
 
     saveTrades() {
+        console.log('💾 saveTrades() вызван');
+        console.log('📝 Сохраняю trades:', this.trades);
         localStorage.setItem('backtestTrades', JSON.stringify(this.trades));
+        console.log('✅ Данные сохранены в localStorage');
     }
 
     addTrade(tradeData) {
+
+        console.log('🔄 addTrade вызван с данными:', tradeData);
+
         const trade = {
             id: Date.now(),
             ...tradeData,
             createdAt: new Date().toISOString()
         };
 
+        console.log('💾 Создан объект сделки:', trade);
+        console.log('📊 Текущий массив trades до добавления:', this.trades.length);
         // Если выбрана существующая группа
         if (tradeData.category) {
             const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
@@ -648,6 +628,8 @@ export class BacktestModule {
         notifications.success('Сделка добавлена');
     }
 
+
+
     deleteTrade(tradeId) {
         this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
         this.saveTrades();
@@ -667,6 +649,22 @@ export class BacktestModule {
     }
 
     bindEvents() {
+        console.log('🎯 bindEvents() вызван');
+        const self = this;
+        console.log('📋 Форма найдена:', document.getElementById('tradeForm'));
+
+        const submitBtn = document.querySelector('#tradeForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.click();
+        } else {
+            // Если кнопки нет, отправляем событие submit напрямую
+            const form = document.getElementById('tradeForm');
+            if (form) {
+                console.log('🚀 Dispatching submit event from hotkey');
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            }
+        }
+        console.log('🎯 Кнопка submit найдена:', submitButton);
 
         // Инициализируем RR кнопки при загрузке
         this.initializeRrButtons();
@@ -697,22 +695,37 @@ export class BacktestModule {
 
 
         // Существующий обработчик submit остается без изменений
-        document.getElementById('tradeForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const activeType = document.querySelector('.type-btn.active').dataset.type;
+        // Обработчик submit через делегирование
+        document.addEventListener('submit', (e) => {
+            console.log('🎯 SUBMIT EVENT CAUGHT! Target:', e.target.id, e.target);
 
-            this.addTrade({
-                type: activeType,
-                currency: formData.get('currency'),
-                date: formData.get('date'),
-                result: parseFloat(formData.get('result')),
-                category: formData.get('category')
-            });
+            if (e.target.id === 'tradeForm') {
+                console.log('🔥 Form submitted via delegation!');
+                e.preventDefault();
+                console.log('🔥 Form submitted via delegation!');
 
-            // Только clearForm, без дополнительного reset
-            this.clearForm();
-            document.getElementById('tradeFormContainer').style.display = 'none';
+                const formData = new FormData(e.target);
+                const activeType = document.querySelector('.type-btn.active').dataset.type;
+
+                console.log('Form data:', {
+                    type: activeType,
+                    currency: formData.get('currency'),
+                    date: formData.get('date'),
+                    result: formData.get('result'),
+                    category: formData.get('category')
+                });
+
+                self.addTrade({  // this. -> self.
+                    type: activeType,
+                    currency: formData.get('currency'),
+                    date: formData.get('date'),
+                    result: parseFloat(formData.get('result')),
+                    category: formData.get('category')
+                });
+
+                self.clearForm();  // this. -> self.
+                document.getElementById('tradeFormContainer').style.display = 'none';
+            }
         });
 
         // Фильтры

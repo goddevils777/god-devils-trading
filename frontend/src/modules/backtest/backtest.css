@@ -105,7 +105,7 @@
 
 .rr-buttons {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -960,15 +960,27 @@
     background: var(--red-primary);
     color: white;
 }
-
-/* Mini Toggle Switch */
+/* Random Toggle Switch */
 .mini-toggle-switch {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: inline-block;
+    position: relative;
     cursor: pointer;
-    user-select: none;
-    margin-left: 6px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.mini-toggle-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 8px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.mini-toggle-switch:hover {
+    background: var(--bg-primary);
+    border-color: var(--border-secondary);
 }
 
 .mini-toggle-switch input[type="checkbox"] {
@@ -977,9 +989,9 @@
 
 .mini-toggle-slider {
     position: relative;
-    width: 28px;
-    height: 16px;
-    background: var(--bg-primary);
+    width: 26px;
+    height: 14px;
+    background: var(--border-primary);
     border: 1px solid var(--border-secondary);
     border-radius: 8px;
     transition: all 0.3s ease;
@@ -990,9 +1002,9 @@
     position: absolute;
     top: 1px;
     left: 1px;
-    width: 12px;
-    height: 12px;
-    background: var(--text-muted);
+    width: 10px;
+    height: 10px;
+    background: var(--text-primary);
     border-radius: 50%;
     transition: all 0.3s ease;
 }
@@ -1007,67 +1019,8 @@
     background: #000;
 }
 
-.mini-toggle-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    font-weight: 600;
-    min-width: 8px;
-}
+
 
 .mini-toggle-switch input:checked ~ .mini-toggle-label {
     color: var(--yellow-primary);
-}
-
-.rr-buttons {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-/* Mini Toggle Switch */
-.mini-toggle-switch {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    cursor: pointer;
-    user-select: none;
-    margin-left: 8px;
-    flex-shrink: 0;
-}
-
-.mini-toggle-slider {
-    position: relative;
-    width: 24px;
-    height: 14px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-secondary);
-    border-radius: 7px;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-}
-
-.mini-toggle-slider::before {
-    content: '';
-    position: absolute;
-    top: 1px;
-    left: 1px;
-    width: 10px;
-    height: 10px;
-    background: var(--text-muted);
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-.mini-toggle-switch input:checked + .mini-toggle-slider::before {
-    transform: translateX(10px);
-    background: #000;
-}
-
-.mini-toggle-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
 }
