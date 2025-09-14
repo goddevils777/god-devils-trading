@@ -189,7 +189,7 @@
     border-radius: 4px;
     color: var(--text-primary);
     font-size: 14px;
-    min-width: 120px;
+    min-width: 150px;
 }
 
 #clearFiltersBtn {
@@ -1023,4 +1023,624 @@
 
 .mini-toggle-switch input:checked ~ .mini-toggle-label {
     color: var(--yellow-primary);
+}
+
+/* Random Toggle Styles */
+.rr-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.random-toggle-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.random-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.random-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.random-toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.random-toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 0px;
+    top: 2px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.random-toggle-switch input:checked + .random-toggle-slider {
+    background: var(--yellow-primary);
+    border-color: var(--yellow-primary);
+}
+
+.random-toggle-switch input:checked + .random-toggle-slider::before {
+    transform: translateX(20px);
+    background: #000;
+}
+
+.random-toggle-switch:hover .random-toggle-slider {
+    box-shadow: 0 0 8px rgba(252, 213, 53, 0.3);
+}
+
+/* Selected state styling */
+.random-toggle-switch input:checked ~ .random-toggle-label {
+    color: var(--yellow-primary);
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 400px;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal h3 {
+    margin: 0 0 16px 0;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal p {
+    margin: 0 0 20px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.modal input {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.modal input:focus {
+    outline: none;
+    border-color: var(--yellow-primary);
+    box-shadow: 0 0 0 2px rgba(252, 213, 53, 0.2);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-actions button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 14px;
+}
+
+#cancelGroupBtn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+}
+
+#cancelGroupBtn:hover {
+    background: var(--border-secondary);
+    color: var(--text-primary);
+}
+
+#confirmGroupBtn {
+    background: var(--yellow-primary);
+    border: none;
+    color: #000;
+}
+
+#confirmGroupBtn:hover {
+    background: var(--yellow-hover);
+}
+
+/* Group Separator with Ungroup Button */
+.group-separator {
+    background: rgba(128, 128, 128, 0.3);
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    font-weight: 500;
+    font-size: 11px;
+    border-top: 1px solid var(--border-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ungroup-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    opacity: 0.7;
+}
+
+.ungroup-btn:hover {
+    background: var(--red-primary);
+    color: white;
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Updated Group Separator with Collapse */
+.group-separator {
+    background: rgba(128, 128, 128, 0.3);
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    font-weight: 500;
+    font-size: 11px;
+    border-top: 1px solid var(--border-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.group-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.collapse-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 10px;
+    transition: all 0.15s ease;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.collapse-btn:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    transform: scale(1.1);
+}
+
+.ungroup-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    opacity: 0.7;
+}
+
+.ungroup-btn:hover {
+    background: var(--red-primary);
+    color: white;
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Fix stat card layout */
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column; /* Принудительно вертикальное расположение */
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block; /* Блочный элемент */
+    margin-bottom: 0;
+}
+
+.stat-streak {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-weight: 400;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: block;
+    width: fit-content;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* Updated Trade Type Styles with Emojis */
+.trade-type {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.trade-type.long {
+    background: rgba(0, 200, 83, 0.2);
+    color: #00c853;
+    border: 1px solid rgba(0, 200, 83, 0.3);
+}
+
+.trade-type.long:hover {
+    background: rgba(0, 200, 83, 0.3);
+    transform: scale(1.05);
+}
+
+.trade-type.short {
+    background: rgba(255, 23, 68, 0.2);
+    color: #ff1744;
+    border: 1px solid rgba(255, 23, 68, 0.3);
+}
+
+.trade-type.short:hover {
+    background: rgba(255, 23, 68, 0.3);
+    transform: scale(1.05);
+}
+
+/* Trade Date Clickable */
+.trade-date {
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.trade-date:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    transform: scale(1.02);
+}
+
+/* Disabled Actions */
+.delete-btn.disabled,
+.trade-type.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.delete-btn.disabled:hover,
+.trade-type.disabled:hover {
+    transform: none;
+    background: initial;
+}
+
+/* Form Type Buttons with Emojis */
+.trade-type-buttons .type-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.trade-type-buttons .type-btn[data-type="long"] {
+    border-color: rgba(0, 200, 83, 0.3);
+    color: #00c853;
+}
+
+.trade-type-buttons .type-btn[data-type="long"]:hover {
+    background: rgba(0, 200, 83, 0.1);
+    border-color: #00c853;
+}
+
+.trade-type-buttons .type-btn[data-type="long"].active {
+    background: #00c853;
+    color: white;
+    border-color: #00c853;
+    box-shadow: 0 0 10px rgba(0, 200, 83, 0.3);
+}
+
+.trade-type-buttons .type-btn[data-type="short"] {
+    border-color: rgba(255, 23, 68, 0.3);
+    color: #ff1744;
+}
+
+.trade-type-buttons .type-btn[data-type="short"]:hover {
+    background: rgba(255, 23, 68, 0.1);
+    border-color: #ff1744;
+}
+
+.trade-type-buttons .type-btn[data-type="short"].active {
+    background: #ff1744;
+    color: white;
+    border-color: #ff1744;
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.3);
+}
+
+/* Beautiful Calendar Styles */
+input[type="date"] {
+    position: relative;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+input[type="date"]:focus {
+    outline: none;
+    border-color: var(--yellow-primary);
+    box-shadow: 0 0 0 3px rgba(252, 213, 53, 0.1);
+}
+
+input[type="date"]:hover {
+    border-color: var(--yellow-primary);
+    background: var(--bg-primary);
+}
+
+/* Calendar Icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    color: var(--text-secondary);
+    background: transparent;
+    bottom: 0;
+    color: transparent;
+    cursor: pointer;
+    height: auto;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center right 12px;
+    background-size: 16px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23fcd53f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+}
+
+/* Modern Calendar Popup Styles */
+input[type="date"]::-webkit-datetime-edit {
+    color: var(--text-primary);
+    padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+    color: var(--text-secondary);
+    padding: 0 2px;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field {
+    color: var(--text-primary);
+}
+
+input[type="date"]::-webkit-datetime-edit-day-field {
+    color: var(--text-primary);
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field {
+    color: var(--text-primary);
+}
+
+/* Firefox Calendar Styles */
+input[type="date"]::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+/* Custom Calendar for Modern Look */
+.date-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.date-input-wrapper::after {
+    content: "📅";
+    position: absolute;
+    right: 12px;
+    pointer-events: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Enhanced Date Controls */
+.date-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.date-controls input[type="date"] {
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.date-controls input[type="date"]:focus {
+    background: var(--bg-secondary);
+    box-shadow: none;
+}
+
+.date-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    transition: all 0.15s ease;
+    font-size: 14px;
+}
+
+.date-btn:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    border-color: var(--yellow-primary);
+    transform: scale(1.05);
+}
+
+.date-btn:active {
+    transform: scale(0.95);
+}
+
+/* Dark Theme Calendar Support */
+@media (prefers-color-scheme: dark) {
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
+}
+
+/* Enhanced Focus States for Date Inputs */
+.date-controls.date-focused {
+    border-color: var(--yellow-primary);
+    box-shadow: 0 0 0 3px rgba(252, 213, 53, 0.15);
+    transform: scale(1.01);
+}
+
+.date-controls.date-focused input[type="date"] {
+    background: var(--bg-primary);
+}
+
+/* Smooth Transitions */
+.date-controls {
+    transition: all 0.2s ease;
+}
+
+/* Calendar Icon Animation */
+.date-controls:hover .date-input-wrapper::after {
+    transform: scale(1.1);
+    transition: transform 0.15s ease;
+}
+
+/* Date Input Placeholder Effect */
+input[type="date"]:invalid {
+    color: var(--text-muted);
+}
+
+input[type="date"]:valid {
+    color: var(--text-primary);
+}
+
+/* Modern Tooltip for Date Format */
+.date-controls::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-tooltip, #1a1a1a);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+}
+
+.date-controls:hover::before {
+    opacity: 1;
 }

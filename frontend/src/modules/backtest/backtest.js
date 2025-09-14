@@ -1,5 +1,6 @@
 import './backtest.css';
 import { notifications } from '../../utils/notifications.js';
+import { initCustomCalendars } from '../../utils/CustomCalendar.js';
 
 export class BacktestModule {
     constructor() {
@@ -7,6 +8,8 @@ export class BacktestModule {
         this.currencies = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'EURGBP', 'EURJPY'];
         this.rrValues = JSON.parse(localStorage.getItem('customRrValues')) || ['-1', '-0.8', '0', '1.5', '2'];
         this.currentFilter = { currency: 'all', result: 'all', category: 'all', group: 'all', dateFrom: '', dateTo: '' };
+        this.randomMode = JSON.parse(localStorage.getItem('randomModeState')) || false;
+        this.collapsedGroups = new Set(JSON.parse(localStorage.getItem('collapsedGroups')) || []); // Добавить эту строку
     }
 
     render() {
@@ -40,95 +43,105 @@ export class BacktestModule {
         `;
     }
 
+    // Обновить метод renderTradeForm для установки состояния:
     renderTradeForm() {
         const lastTradeDate = this.getLastTradeDate();
         const nextDate = this.getNextDate(lastTradeDate);
         const lastGroup = localStorage.getItem('lastSelectedGroup') || '';
+        const lastCurrency = localStorage.getItem('lastSelectedCurrency') || 'EURUSD'; // Добавить запоминание валюты
 
         return `
-        <div class="trade-form">
-            <h3>Новая сделка</h3>
-            <form id="tradeForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Тип</label>
-                        <div class="trade-type-buttons">
-                            <button type="button" class="type-btn active" data-type="long">Long</button>
-                            <button type="button" class="type-btn" data-type="short">Short</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Валютная пара</label>
-                        <select name="currency" required>
-                            ${this.currencies.map(cur => `<option value="${cur}">${cur}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Группа (категория)</label>
-                        <select name="category">
-                            <option value="">Без группы</option>
-                            ${this.getExistingGroups().map(group => `
-                                <option value="${group}" ${group === lastGroup ? 'selected' : ''}>${group}</option>
-                            `).join('')}
-                        </select>
-                    </div>
+<div class="trade-form">
+    <h3>Новая сделка</h3>
+    <form id="tradeForm">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Тип</label>
+                <div class="trade-type-buttons">
+                    <button type="button" class="type-btn active" data-type="long">😇 Long</button>
+                    <button type="button" class="type-btn" data-type="short">😈 Short</button>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Дата</label>
-                        <div class="date-controls">
-                            <button type="button" class="date-btn" id="prevDateBtn">←</button>
-                            <input type="date" name="date" value="${nextDate}" required>
-                            <button type="button" class="date-btn" id="nextDateBtn">→</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Результат (RR)</label>
-                            <div class="rr-controls">
-                                <div class="rr-buttons" id="rrButtonsContainer">
-                                    <button type="button" class="add-rr-btn" id="addRrBtn">+</button>
-                                    <button type="button" class="remove-rr-btn" id="removeRrBtn">−</button>
-<span class="mini-toggle-label">R</span>
-<label class="mini-toggle-switch">
-    <input type="checkbox" id="randomMode">
-    <span class="mini-toggle-slider"></span>
-</label>
-                                </div>
-                                <div class="rr-input-row">
-                                    <input type="number" name="result" step="0.1" value="" placeholder="0" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" id="clearFormBtn">Очистить</button>
-                    <button type="button" id="cancelTradeBtn">Отмена</button>
-                    <button type="submit">Сохранить</button>
-                </div>
-
-                <div class="hotkeys-info">
-                    <div class="hotkey">
-                        <kbd>Tab</kbd>
-                        <span>переключить тип</span>
-                    </div>
-                    <div class="hotkey">
-                        <kbd>Space</kbd>
-                        <span>выбрать RR</span>
-                    </div>
-                    <div class="hotkey">
-                        <kbd>← →</kbd>
-                        <span>изменить дату</span>
-                    </div>
-                </div>
-            </form>
+            </div>
+            <div class="form-group">
+                <label>Валютная пара</label>
+                <select name="currency" required>
+                    ${this.currencies.map(cur => `<option value="${cur}" ${cur === lastCurrency ? 'selected' : ''}>${cur}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Группа (категория)</label>
+                <select name="category">
+                    <option value="">Без группы</option>
+                    ${this.getExistingGroups().map(group => `
+                        <option value="${group}" ${group === lastGroup ? 'selected' : ''}>${group}</option>
+                    `).join('')}
+                </select>
+            </div>
         </div>
-    `;
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Дата</label>
+                <div class="date-controls">
+                    <button type="button" class="date-btn" id="prevDateBtn">←</button>
+                    <input type="date" name="date" value="${nextDate}" required>
+                    <button type="button" class="date-btn" id="nextDateBtn">→</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Результат (RR)</label>
+                <div class="rr-controls">
+                    <div class="rr-buttons" id="rrButtonsContainer">
+                        ${this.rrValues.map(value => `
+                            <button type="button" class="rr-btn" data-rr="${value}">
+                                ${parseFloat(value) > 0 ? '+' + value : value}
+                            </button>
+                        `).join('')}
+                        <button type="button" class="add-rr-btn" id="addRrBtn">+</button>
+                        <button type="button" class="remove-rr-btn" id="removeRrBtn">−</button>
+                    </div>
+                    <div class="rr-input-row">
+                        <input type="number" name="result" step="0.1" value="" placeholder="0" required>
+                        <span class="random-toggle-label">Random</span>
+                        <label class="random-toggle-switch">
+                            <input type="checkbox" id="randomMode" ${this.randomMode ? 'checked' : ''}>
+                            <span class="random-toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" id="clearFormBtn">Очистить</button>
+            <button type="button" id="cancelTradeBtn">Отмена</button>
+            <button type="submit">Сохранить</button>
+        </div>
+
+        <div class="hotkeys-info">
+            <div class="hotkey">
+                <kbd>Tab</kbd>
+                <span>переключить тип</span>
+            </div>
+            <div class="hotkey">
+                <kbd>Space</kbd>
+                <span>переключить RR / рандом</span>
+            </div>
+            <div class="hotkey">
+                <kbd>← →</kbd>
+                <span>изменить дату</span>
+            </div>
+            <div class="hotkey">
+                <kbd>Enter</kbd>
+                <span>сохранить</span>
+            </div>
+        </div>
+    </form>
+</div>
+`;
     }
 
     renderFilters() {
@@ -149,69 +162,87 @@ export class BacktestModule {
                     <option value="all">Все</option>
                     <option value="profit">Прибыль</option>
                     <option value="loss">Убыток</option>
-                    <option value="breakeven">Безубыток</option>
+                    <option value="breakeven">В ноль</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label>Группа:</label>
                 <select id="groupFilter">
                     <option value="all">Все</option>
-                    <option value="ungrouped">Несгруппированные</option>
+                    <option value="ungrouped">Без группы</option>
                     ${groups.map(group => `<option value="${group}">${group}</option>`).join('')}
                 </select>
             </div>
             <div class="filter-group">
-                <label>С даты:</label>
+                <label>От:</label>
                 <input type="date" id="dateFromFilter">
             </div>
             <div class="filter-group">
-                <label>По дату:</label>
+                <label>До:</label>
                 <input type="date" id="dateToFilter">
             </div>
-            <button id="clearFiltersBtn">Сбросить</button>
+            <button id="clearFiltersBtn">Очистить фильтры</button>
         </div>
-    `;
+        `;
     }
 
     renderStats() {
         const filteredTrades = this.getFilteredTrades();
         const totalTrades = filteredTrades.length;
+
+        if (totalTrades === 0) {
+            return `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Всего сделок</div>
+                </div>
+            </div>
+        `;
+        }
+
         const winTrades = filteredTrades.filter(t => t.result > 0).length;
         const lossTrades = filteredTrades.filter(t => t.result < 0).length;
-        const breakEvenTrades = filteredTrades.filter(t => t.result === 0).length;
+        const breakevenTrades = filteredTrades.filter(t => t.result === 0).length;
 
-        // Винрейт считается только от прибыльных и убыточных (исключая безубыточные)
+        // Win Rate считается ТОЛЬКО от прибыльных и убыточных (исключая breakeven)
         const tradesWithResult = winTrades + lossTrades;
         const winRate = tradesWithResult > 0 ? ((winTrades / tradesWithResult) * 100).toFixed(1) : 0;
-        const totalPnL = filteredTrades.reduce((sum, t) => sum + t.result, 0).toFixed(1);
+
+        const totalPnL = filteredTrades.reduce((sum, t) => sum + t.result, 0).toFixed(2);
+
+        // Подсчет максимальных серий
+        const streaks = this.calculateStreaks(filteredTrades);
 
         return `
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">${totalTrades}</div>
-                <div class="stat-label">Всего сделок</div>
-            </div>
-            <div class="stat-card win">
-                <div class="stat-number">${winTrades}</div>
-                <div class="stat-label">Прибыльных</div>
-            </div>
-            <div class="stat-card loss">
-                <div class="stat-number">${lossTrades}</div>
-                <div class="stat-label">Убыточных</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${breakEvenTrades}</div>
-                <div class="stat-label">Безубыточных</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${winRate}%</div>
-                <div class="stat-label">Винрейт</div>
-            </div>
-            <div class="stat-card ${totalPnL >= 0 ? 'win' : 'loss'}">
-                <div class="stat-number">${totalPnL} RR</div>
-                <div class="stat-label">Общий P&L</div>
-            </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">${totalTrades}</div>
+            <div class="stat-label">Всего сделок</div>
         </div>
+        <div class="stat-card win">
+            <div class="stat-number">${winTrades}</div>
+            <div class="stat-label">Прибыльные</div>
+            <div class="stat-streak">макс. серия: ${streaks.maxWinStreak}</div>
+        </div>
+        <div class="stat-card loss">
+            <div class="stat-number">${lossTrades}</div>
+            <div class="stat-label">Убыточные</div>
+            <div class="stat-streak">макс. серия: ${streaks.maxLossStreak}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${breakevenTrades}</div>
+            <div class="stat-label">В ноль</div>
+        </div>
+        <div class="stat-card ${winRate >= 50 ? 'win' : 'loss'}">
+            <div class="stat-number">${winRate}%</div>
+            <div class="stat-label">Win Rate</div>
+        </div>
+        <div class="stat-card ${totalPnL > 0 ? 'win' : totalPnL < 0 ? 'loss' : ''}">
+            <div class="stat-number">${totalPnL} RR</div>
+            <div class="stat-label">Общий P&L</div>
+        </div>
+    </div>
     `;
     }
 
@@ -223,277 +254,333 @@ export class BacktestModule {
         }
 
         let currentGroup = null;
-        let result = '';
 
         return `
-        <div class="trades-table">
-            <div class="table-header">
-                <div>Дата</div>
-                <div>Тип</div>
-                <div>Валюта</div>
-                <div>Результат</div>
-                <div>Действия</div>
-            </div>
-            ${filteredTrades.map(trade => {
+    <div class="trades-table">
+        <div class="table-header">
+            <div>Дата</div>
+            <div>Тип</div>
+            <div>Валюта</div>
+            <div>Результат</div>
+            <div>Действия</div>
+        </div>
+        ${filteredTrades.map((trade, index) => {
             let groupHeader = '';
+            let tradeRow = '';
 
-            // Показываем заголовок группы только если группа изменилась
+            // Проверяем, можно ли редактировать/удалить сделку (5 минут = 300000 мс)
+            const tradeAge = Date.now() - new Date(trade.createdAt).getTime();
+            const canModify = tradeAge < 300000; // 5 минут
+
+            // Если это начало новой группы
             if (trade.groupName && trade.groupName !== currentGroup) {
                 currentGroup = trade.groupName;
+                const isCollapsed = this.collapsedGroups.has(trade.groupName);
+                const groupTradesCount = filteredTrades.filter(t => t.groupName === trade.groupName).length;
+
                 groupHeader = `
-                        <div class="group-separator">
-                            📁 ${trade.groupName}
+                    <div class="group-separator">
+                        <div class="group-info">
+                            <button class="collapse-btn" data-group="${trade.groupName}" title="${isCollapsed ? 'Развернуть' : 'Свернуть'}">
+                                ${isCollapsed ? '▶' : '▼'}
+                            </button>
+                            <span>📁 ${trade.groupName} (${groupTradesCount})</span>
                         </div>
-                    `;
+                        <button class="ungroup-btn" data-group="${trade.groupName}" title="Расгруппировать">✕</button>
+                    </div>
+                `;
             } else if (!trade.groupName && currentGroup !== null) {
-                // Сбрасываем группу для несгруппированных сделок
                 currentGroup = null;
             }
 
-            return `
-                    ${groupHeader}
+            // Показываем сделку только если группа не свернута
+            const shouldShowTrade = !trade.groupName || !this.collapsedGroups.has(trade.groupName);
+
+            if (shouldShowTrade) {
+                // Определяем иконку и текст для типа сделки
+                const typeIcon = trade.type === 'long' ? '😇' : '😈';
+                const typeText = trade.type === 'long' ? 'LONG' : 'SHORT';
+
+                tradeRow = `
                     <div class="table-row ${trade.groupName ? 'grouped' : ''}">
-                        <div class="trade-date">${this.formatDate(trade.date)}</div>
-                        <div class="trade-type ${trade.type}">${trade.type.toUpperCase()}</div>
+                        <div class="trade-date" data-date="${trade.date}" title="Кликните чтобы использовать эту дату">${this.formatDate(trade.date)}</div>
+                        <div class="trade-type ${trade.type} ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="${canModify ? 'Кликните для смены типа' : 'Нельзя изменить (прошло больше 5 минут)'}">${typeIcon} ${typeText}</div>
                         <div class="trade-currency">${trade.currency}</div>
                         <div class="trade-result ${trade.result > 0 ? 'profit' : trade.result < 0 ? 'loss' : 'breakeven'}">
                             ${trade.result > 0 ? '+' : ''}${trade.result} RR
-                            </div>
-                    <div class="trade-actions">
-                        <button class="delete-btn" data-id="${trade.id}">✕</button>
-                    </div>
+                        </div>
+                        <div class="trade-actions">
+                            <button class="delete-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="${canModify ? 'Удалить сделку' : 'Нельзя удалить (прошло больше 5 минут)'}">🗑</button>
+                        </div>
                     </div>
                 `;
+            }
+
+            return groupHeader + tradeRow;
         }).join('')}
-        </div>
+    </div>
     `;
     }
 
-    showGroupModal(ungroupedCount) {
-        const modal = document.createElement('div');
-        modal.className = 'group-modal';
-        modal.innerHTML = `
-        <div class="modal-backdrop"></div>
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Создание группы</h3>
-            </div>
-            <div class="modal-body">
-                <p>Несгруппированных сделок: <strong>${ungroupedCount}</strong></p>
-                <input type="text" id="groupNameInput" placeholder="Введите название группы" autofocus>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelGroupBtn">Отмена</button>
-                <button id="confirmGroupBtn">Создать</button>
-            </div>
-        </div>
-    `;
+    calculateStreaks(trades) {
+        if (trades.length === 0) {
+            return { maxWinStreak: 0, maxLossStreak: 0 };
+        }
 
-        document.body.appendChild(modal);
+        // Сортируем сделки по дате (от старой к новой)
+        const sortedTrades = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        return new Promise((resolve) => {
-            const confirmBtn = modal.querySelector('#confirmGroupBtn');
-            const cancelBtn = modal.querySelector('#cancelGroupBtn');
-            const backdrop = modal.querySelector('.modal-backdrop');
-            const input = modal.querySelector('#groupNameInput');
+        let maxWinStreak = 0;
+        let maxLossStreak = 0;
+        let currentWinStreak = 0;
+        let currentLossStreak = 0;
 
-            const closeModal = (result) => {
-                document.body.removeChild(modal);
-                resolve(result);
-            };
+        for (const trade of sortedTrades) {
+            if (trade.result > 0) {
+                // Прибыльная сделка
+                currentWinStreak++;
+                currentLossStreak = 0; // Сбрасываем серию убытков
+                maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
+            } else if (trade.result < 0) {
+                // Убыточная сделка
+                currentLossStreak++;
+                currentWinStreak = 0; // Сбрасываем серию прибылей
+                maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
+            }
+            // Если trade.result === 0 (breakeven), не сбрасываем серии
+        }
 
-            confirmBtn.addEventListener('click', () => {
-                const groupName = input.value.trim();
-                if (groupName) closeModal(groupName);
-            });
-
-            cancelBtn.addEventListener('click', () => closeModal(null));
-            backdrop.addEventListener('click', () => closeModal(null));
-
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const groupName = input.value.trim();
-                    if (groupName) closeModal(groupName);
-                }
-                if (e.key === 'Escape') closeModal(null);
-            });
-        });
+        return { maxWinStreak, maxLossStreak };
     }
 
-    removeCurrentRr() {
-        const resultInput = document.querySelector('input[name="result"]');
-        const currentValue = resultInput.value;
-
-        if (currentValue && this.rrValues.includes(currentValue)) {
-            // Не удаляем если осталось меньше 3 значений
-            if (this.rrValues.length <= 3) {
-                notifications.warning('Нельзя удалить - должно остаться минимум 3 значения RR');
-                return;
-            }
-
-            this.rrValues = this.rrValues.filter(v => v !== currentValue);
-            localStorage.setItem('customRrValues', JSON.stringify(this.rrValues));
-
-            // Удаляем кнопку из интерфейса
-            const btnToRemove = document.querySelector(`[data-rr="${currentValue}"]`);
-            if (btnToRemove) {
-                btnToRemove.style.transition = 'all 0.3s ease';
-                btnToRemove.style.opacity = '0';
-                btnToRemove.style.transform = 'scale(0.8)';
-                setTimeout(() => btnToRemove.remove(), 300);
-            }
-
-            // Очищаем поле
-            resultInput.value = '';
-            notifications.success(`Удалено RR: ${currentValue}`);
+    toggleGroupCollapse(groupName) {
+        if (this.collapsedGroups.has(groupName)) {
+            this.collapsedGroups.delete(groupName);
         } else {
-            notifications.warning('Выберите RR значение для удаления');
+            this.collapsedGroups.add(groupName);
         }
+
+        // Сохраняем состояние в localStorage
+        localStorage.setItem('collapsedGroups', JSON.stringify([...this.collapsedGroups]));
+
+        // Обновляем отображение
+        this.updateDisplay();
     }
 
+    getFilteredTrades() {
+        return this.trades.filter(trade => {
+            if (this.currentFilter.currency !== 'all' && trade.currency !== this.currentFilter.currency) {
+                return false;
+            }
 
+            if (this.currentFilter.result !== 'all') {
+                if (this.currentFilter.result === 'profit' && trade.result <= 0) return false;
+                if (this.currentFilter.result === 'loss' && trade.result >= 0) return false;
+                if (this.currentFilter.result === 'breakeven' && trade.result !== 0) return false;
+            }
 
-    addCustomRr(value) {
-        if (!this.rrValues.includes(value.toString())) {
-            this.rrValues.push(value.toString());
-            this.rrValues.sort((a, b) => parseFloat(a) - parseFloat(b));
-            localStorage.setItem('customRrValues', JSON.stringify(this.rrValues));
-            this.updateRrButtons();
-        }
-    }
+            if (this.currentFilter.group && this.currentFilter.group !== 'all') {
+                if (this.currentFilter.group === 'ungrouped' && trade.groupName) return false;
+                if (this.currentFilter.group !== 'ungrouped' && trade.groupName !== this.currentFilter.group) return false;
+            }
 
-    updateRrButtons() {
-        const container = document.querySelector('.rr-buttons');
-        const addBtn = container.querySelector('.add-rr-btn');
+            if (this.currentFilter.dateFrom && trade.date < this.currentFilter.dateFrom) return false;
+            if (this.currentFilter.dateTo && trade.date > this.currentFilter.dateTo) return false;
 
-        // Удаляем старые кнопки RR
-        container.querySelectorAll('.rr-btn').forEach(btn => btn.remove());
+            return true;
+        }).sort((a, b) => {
+            // Сначала сортируем по группам
+            if (a.groupName && !b.groupName) return -1;
+            if (!a.groupName && b.groupName) return 1;
+            if (a.groupName !== b.groupName) return (a.groupName || '').localeCompare(b.groupName || '');
 
-        // Добавляем новые кнопки RR
-        this.rrValues.forEach(value => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'rr-btn';
-            btn.dataset.rr = value;
-            btn.textContent = parseFloat(value) > 0 ? `+${value}` : value;
-            container.insertBefore(btn, addBtn);
-
-            btn.addEventListener('click', () => {
-                document.querySelector('input[name="result"]').value = value;
-            });
+            // Внутри группы сортируем по времени создания: НОВЫЕ ВВЕРХУ
+            // Если есть createdAt - используем его, иначе используем дату сделки
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
+            return timeB - timeA;
         });
     }
 
-    getNextRrValue(currentValue, isRandom = false) {
-        if (isRandom) {
+    formatDate(dateStr) {
+        return new Date(dateStr).toLocaleDateString('ru-RU');
+    }
+
+    saveTrades() {
+        console.log('💾 saveTrades() вызван');
+        console.log('📝 Сохраняю trades:', this.trades);
+        localStorage.setItem('backtestTrades', JSON.stringify(this.trades));
+        console.log('✅ Данные сохранены в localStorage');
+    }
+
+    addTrade(tradeData) {
+        console.log('🔄 addTrade вызван с данными:', tradeData);
+
+        const trade = {
+            id: Date.now(),
+            ...tradeData,
+            createdAt: new Date().toISOString()
+        };
+
+        console.log('💾 Создан объект сделки:', trade);
+        console.log('📊 Текущий массив trades до добавления:', this.trades.length);
+
+        if (tradeData.category) {
+            const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
+            if (existingGroup) {
+                trade.groupId = existingGroup.groupId;
+                trade.groupName = tradeData.category;
+            }
+        }
+
+        // Сохраняем последние выбранные значения
+        if (tradeData.category) {
+            localStorage.setItem('lastSelectedGroup', tradeData.category);
+        }
+
+        // Добавить сохранение последней валютной пары
+        if (tradeData.currency) {
+            localStorage.setItem('lastSelectedCurrency', tradeData.currency);
+        }
+
+        this.trades.push(trade);
+        this.saveTrades();
+        this.updateDisplay();
+        notifications.success('Сделка добавлена');
+    }
+
+    deleteTrade(tradeId) {
+        this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
+        this.saveTrades();
+        this.updateDisplay();
+        notifications.success('Сделка удалена');
+    }
+
+    updateDisplay() {
+        document.querySelector('.trades-stats').innerHTML = this.renderStats();
+        document.querySelector('.trades-list').innerHTML = this.renderTradesList();
+    }
+
+    highlightDateButton(direction) {
+        const btn = document.getElementById(direction === 'prev' ? 'prevDateBtn' : 'nextDateBtn');
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 150);
+    }
+
+    cycleRrValue() {
+        const resultInput = document.querySelector('input[name="result"]');
+        const rrButtons = document.querySelectorAll('.rr-btn');
+
+        if (this.randomMode) {
+            // Рандомный режим - выбираем случайное значение
             const randomIndex = Math.floor(Math.random() * this.rrValues.length);
-            return this.rrValues[randomIndex];
-        }
+            const randomValue = this.rrValues[randomIndex];
 
-        // Логика: 0 → +максимальное → -максимальное → +следующее → -следующее
-        const positiveValues = this.rrValues.filter(v => parseFloat(v) > 0).sort((a, b) => parseFloat(b) - parseFloat(a)); // По убыванию
-        const negativeValues = this.rrValues.filter(v => parseFloat(v) < 0).sort((a, b) => parseFloat(a) - parseFloat(b)); // По возрастанию (от -1 к -2)
-        const zeroValue = this.rrValues.find(v => parseFloat(v) === 0);
+            resultInput.value = randomValue;
 
-        // Создаем последовательность: 0, +2, -2, +1, -1, +3, -3...
-        const sequence = [];
-        if (zeroValue) sequence.push(zeroValue);
-
-        const maxLength = Math.max(positiveValues.length, negativeValues.length);
-        for (let i = 0; i < maxLength; i++) {
-            if (positiveValues[i]) sequence.push(positiveValues[i]);
-            if (negativeValues[i]) sequence.push(negativeValues[i]);
-        }
-
-        if (currentValue === '' || !sequence.includes(currentValue)) {
-            return sequence[0] || this.rrValues[0];
-        }
-
-        const currentIndex = sequence.indexOf(currentValue);
-        const nextIndex = (currentIndex + 1) % sequence.length;
-        return sequence[nextIndex];
-    }
-    showNewRrInput() {
-        if (document.getElementById('newRrInput')) return; // Уже показано
-
-        const addBtn = document.getElementById('addRrBtn');
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.id = 'newRrInput';
-        input.step = '0.1';
-        input.placeholder = 'RR';
-        input.className = 'new-rr-input-inline';
-
-        addBtn.parentNode.insertBefore(input, addBtn.nextSibling);
-        input.focus();
-
-        // Обработчики для нового поля
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.processNewRr();
+            // Обновляем подсветку
+            rrButtons.forEach(btn => btn.classList.remove('selected'));
+            const targetBtn = document.querySelector(`[data-rr="${randomValue}"]`);
+            if (targetBtn) {
+                targetBtn.classList.add('selected');
             }
-            if (e.key === 'Escape') {
-                this.hideNewRrInput();
+        } else {
+            // Обычный режим - создаем последовательность: 0, +макс, -макс, +след, -след
+
+            // Разделяем значения по категориям
+            const zeroValues = this.rrValues.filter(v => parseFloat(v) === 0);
+            const positiveValues = this.rrValues.filter(v => parseFloat(v) > 0)
+                .sort((a, b) => parseFloat(b) - parseFloat(a)); // По убыванию: +2, +1.5
+            const negativeValues = this.rrValues.filter(v => parseFloat(v) < 0)
+                .sort((a, b) => parseFloat(a) - parseFloat(b)); // По возрастанию: -2, -0.8
+
+            // Создаем последовательность: 0, +2, -2, +1.5, -0.8
+            const sequence = [];
+
+            // Добавляем 0 в начало если есть
+            if (zeroValues.length > 0) {
+                sequence.push(zeroValues[0]);
             }
-        });
 
-        input.addEventListener('blur', () => {
-            setTimeout(() => this.hideNewRrInput(), 150);
-        });
-    }
+            // Чередуем положительные и отрицательные по убыванию абсолютных значений
+            const maxLength = Math.max(positiveValues.length, negativeValues.length);
 
-    hideNewRrInput() {
-        const input = document.getElementById('newRrInput');
-        if (input) {
-            input.remove();
+            for (let i = 0; i < maxLength; i++) {
+                // Добавляем положительное (от большего к меньшему)
+                if (i < positiveValues.length) {
+                    sequence.push(positiveValues[i]);
+                }
+                // Добавляем отрицательное (от большего по модулю к меньшему)
+                if (i < negativeValues.length) {
+                    sequence.push(negativeValues[i]);
+                }
+            }
+
+            console.log('Sequence:', sequence); // Для отладки
+
+            const currentValue = resultInput.value;
+            let currentIndex = sequence.indexOf(currentValue);
+
+            if (currentIndex === -1) currentIndex = -1; // Начнем с первого элемента
+
+            const nextIndex = (currentIndex + 1) % sequence.length;
+            const nextValue = sequence[nextIndex];
+
+            resultInput.value = nextValue;
+
+            // Обновляем подсветку
+            rrButtons.forEach(btn => btn.classList.remove('selected'));
+            const targetBtn = document.querySelector(`[data-rr="${nextValue}"]`);
+            if (targetBtn) {
+                targetBtn.classList.add('selected');
+            }
+
+            console.log(`Current: ${currentValue} -> Next: ${nextValue}`); // Для отладки
         }
     }
 
     initializeRrButtons() {
-        const container = document.querySelector('.rr-buttons');
-        const addBtn = container.querySelector('.add-rr-btn');
+        const rrButtons = document.querySelectorAll('.rr-btn');
 
-        // Очищаем все кнопки кроме "+"
-        container.querySelectorAll('.rr-btn').forEach(btn => btn.remove());
-
-        // Добавляем все сохраненные RR кнопки
-        this.rrValues.forEach(value => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'rr-btn';
-            btn.dataset.rr = value;
-            btn.textContent = parseFloat(value) > 0 ? `+${value}` : value;
-            container.insertBefore(btn, addBtn);
-
+        rrButtons.forEach(btn => {
             btn.addEventListener('click', () => {
+                const value = btn.dataset.rr;
                 document.querySelector('input[name="result"]').value = value;
+
+                rrButtons.forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
             });
         });
-    }
-
-    processNewRr() {
-        const input = document.getElementById('newRrInput');
-        const newValue = input.value.trim();
-
-        if (newValue && !isNaN(newValue)) {
-            this.addCustomRr(parseFloat(newValue));
-            this.hideNewRrInput();
-        } else if (newValue) {
-            notifications.error('Введите корректное число');
-        }
     }
 
     getExistingGroups() {
         return [...new Set(this.trades.filter(t => t.groupName).map(t => t.groupName))];
     }
 
-
     clearAllTrades() {
-        this.trades = [];
+        const filteredTrades = this.getFilteredTrades();
+
+        if (filteredTrades.length === 0) {
+            notifications.warning('Нет отфильтрованных сделок для удаления');
+            return;
+        }
+
+        // Получаем ID отфильтрованных сделок
+        const filteredTradeIds = new Set(filteredTrades.map(t => t.id));
+
+        // Удаляем только отфильтрованные сделки
+        const originalCount = this.trades.length;
+        this.trades = this.trades.filter(trade => !filteredTradeIds.has(trade.id));
+        const deletedCount = originalCount - this.trades.length;
+
         this.saveTrades();
         this.updateDisplay();
-        notifications.success('Журнал очищен');
+
+        if (deletedCount === originalCount) {
+            notifications.success('Журнал полностью очищен');
+        } else {
+            notifications.success(`Удалено ${deletedCount} отфильтрованных сделок из ${originalCount}`);
+        }
     }
 
     async groupTrades() {
@@ -530,23 +617,23 @@ export class BacktestModule {
         dateInput.value = currentDate.toISOString().split('T')[0];
     }
 
+    // Обновленный метод clearForm
     clearForm() {
         const form = document.getElementById('tradeForm');
         form.reset();
 
-        // Принудительно очищаем поле результата
-        const resultInput = document.querySelector('input[name="result"]');
-        resultInput.value = '';
+        // НЕ очищаем поле результата - оставляем как есть
+        // const resultInput = document.querySelector('input[name="result"]');
+        // resultInput.value = '';
 
         const nextDate = this.getNextDate(this.getLastTradeDate());
         document.querySelector('input[name="date"]').value = nextDate;
 
-        // Сбрасываем активный тип на Long
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('[data-type="long"]').classList.add('active');
 
-        // Убираем подсветку с RR кнопок
-        document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
+        // НЕ убираем подсветку с RR кнопок
+        // document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
     }
 
     getNextDate(lastDate) {
@@ -555,119 +642,271 @@ export class BacktestModule {
         return date.toISOString().split('T')[0];
     }
 
-    getFilteredTrades() {
-        return this.trades.filter(trade => {
-            if (this.currentFilter.currency !== 'all' && trade.currency !== this.currentFilter.currency) {
-                return false;
-            }
+    showGroupModal(tradesCount) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <h3>Создать группу</h3>
+                    <p>Сгруппировать ${tradesCount} сделок</p>
+                    <input type="text" id="groupNameInput" placeholder="Название группы" maxlength="50">
+                    <div class="modal-actions">
+                        <button id="cancelGroupBtn">Отмена</button>
+                        <button id="confirmGroupBtn">Создать</button>
+                    </div>
+                </div>
+            `;
 
-            if (this.currentFilter.result !== 'all') {
-                if (this.currentFilter.result === 'profit' && trade.result <= 0) return false;
-                if (this.currentFilter.result === 'loss' && trade.result >= 0) return false;
-                if (this.currentFilter.result === 'breakeven' && trade.result !== 0) return false;
-            }
+            document.body.appendChild(modal);
 
-            if (this.currentFilter.group && this.currentFilter.group !== 'all') {
-                if (this.currentFilter.group === 'ungrouped' && trade.groupName) return false;
-                if (this.currentFilter.group !== 'ungrouped' && trade.groupName !== this.currentFilter.group) return false;
-            }
+            const input = modal.querySelector('#groupNameInput');
+            const confirmBtn = modal.querySelector('#confirmGroupBtn');
+            const cancelBtn = modal.querySelector('#cancelGroupBtn');
+            const backdrop = modal;
 
-            if (this.currentFilter.dateFrom && trade.date < this.currentFilter.dateFrom) return false;
-            if (this.currentFilter.dateTo && trade.date > this.currentFilter.dateTo) return false;
+            input.focus();
 
-            return true;
-        }).sort((a, b) => {
-            // Сначала сортируем по группам, потом по дате
-            if (a.groupName && !b.groupName) return -1;
-            if (!a.groupName && b.groupName) return 1;
-            if (a.groupName !== b.groupName) return (a.groupName || '').localeCompare(b.groupName || '');
-            return new Date(b.date) - new Date(a.date);
+            const closeModal = (result) => {
+                document.body.removeChild(modal);
+                resolve(result);
+            };
+
+            confirmBtn.addEventListener('click', () => {
+                const groupName = input.value.trim();
+                if (groupName) closeModal(groupName);
+            });
+
+            cancelBtn.addEventListener('click', () => closeModal(null));
+            backdrop.addEventListener('click', () => closeModal(null));
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const groupName = input.value.trim();
+                    if (groupName) closeModal(groupName);
+                }
+                if (e.key === 'Escape') closeModal(null);
+            });
         });
     }
 
-    formatDate(dateStr) {
-        return new Date(dateStr).toLocaleDateString('ru-RU');
-    }
+    showNewRrInput() {
+        if (document.getElementById('newRrInput')) return; // Уже показано
 
-    saveTrades() {
-        console.log('💾 saveTrades() вызван');
-        console.log('📝 Сохраняю trades:', this.trades);
-        localStorage.setItem('backtestTrades', JSON.stringify(this.trades));
-        console.log('✅ Данные сохранены в localStorage');
-    }
+        const addBtn = document.getElementById('addRrBtn');
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.id = 'newRrInput';
+        input.step = '0.1';
+        input.placeholder = 'RR';
+        input.className = 'new-rr-input';
+        input.style.cssText = `
+            width: 80px;
+            padding: 4px 8px;
+            margin-left: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 12px;
+        `;
 
-    addTrade(tradeData) {
+        addBtn.parentNode.insertBefore(input, addBtn.nextSibling);
+        input.focus();
 
-        console.log('🔄 addTrade вызван с данными:', tradeData);
-
-        const trade = {
-            id: Date.now(),
-            ...tradeData,
-            createdAt: new Date().toISOString()
-        };
-
-        console.log('💾 Создан объект сделки:', trade);
-        console.log('📊 Текущий массив trades до добавления:', this.trades.length);
-        // Если выбрана существующая группа
-        if (tradeData.category) {
-            const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
-            if (existingGroup) {
-                trade.groupId = existingGroup.groupId;
-                trade.groupName = tradeData.category;
+        // Обработчики для нового поля
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.processNewRr();
             }
+            if (e.key === 'Escape') {
+                this.hideNewRrInput();
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => this.hideNewRrInput(), 150);
+        });
+    }
+
+    hideNewRrInput() {
+        const input = document.getElementById('newRrInput');
+        if (input) {
+            input.remove();
+        }
+    }
+
+    ungroupTrades(groupName) {
+        const groupedTrades = this.trades.filter(t => t.groupName === groupName);
+
+        if (groupedTrades.length === 0) {
+            notifications.warning('Группа не найдена');
+            return;
         }
 
-        // Сохранить последнюю выбранную группу
-        if (tradeData.category) {
-            localStorage.setItem('lastSelectedGroup', tradeData.category);
+        // Убираем группировку
+        groupedTrades.forEach(trade => {
+            delete trade.groupId;
+            delete trade.groupName;
+        });
+
+        this.saveTrades();
+        this.updateDisplay();
+        notifications.success(`Расгруппировано ${groupedTrades.length} сделок из группы "${groupName}"`);
+    }
+
+    processNewRr() {
+        const input = document.getElementById('newRrInput');
+        const newValue = input.value.trim();
+
+        if (newValue && !isNaN(newValue)) {
+            this.addCustomRr(parseFloat(newValue));
+            this.hideNewRrInput();
+        } else if (newValue) {
+            notifications.error('Введите корректное число');
+        }
+    }
+
+    addCustomRr(value) {
+        const valueStr = value.toString();
+        if (!this.rrValues.includes(valueStr)) {
+            this.rrValues.push(valueStr);
+            this.rrValues.sort((a, b) => parseFloat(a) - parseFloat(b));
+            localStorage.setItem('customRrValues', JSON.stringify(this.rrValues));
+            this.updateRrButtons();
+            notifications.success(`Добавлено RR: ${value}`);
+        } else {
+            notifications.warning('Такое RR значение уже существует');
+        }
+    }
+
+    removeCurrentRr() {
+        const resultInput = document.querySelector('input[name="result"]');
+        const currentValue = resultInput.value;
+
+        if (currentValue && this.rrValues.includes(currentValue)) {
+            // Не удаляем если осталось меньше 3 значений
+            if (this.rrValues.length <= 3) {
+                notifications.warning('Нельзя удалить - должно остаться минимум 3 значения RR');
+                return;
+            }
+
+            this.rrValues = this.rrValues.filter(v => v !== currentValue);
+            localStorage.setItem('customRrValues', JSON.stringify(this.rrValues));
+
+            // Удаляем кнопку из интерфейса
+            const btnToRemove = document.querySelector(`[data-rr="${currentValue}"]`);
+            if (btnToRemove) {
+                btnToRemove.style.transition = 'all 0.3s ease';
+                btnToRemove.style.opacity = '0';
+                btnToRemove.style.transform = 'scale(0.8)';
+                setTimeout(() => btnToRemove.remove(), 300);
+            }
+
+            // Очищаем поле
+            resultInput.value = '';
+            notifications.success(`Удалено RR: ${currentValue}`);
+        } else {
+            notifications.warning('Выберите RR значение для удаления');
+        }
+    }
+
+    updateRrButtons() {
+        const container = document.querySelector('.rr-buttons');
+        const addBtn = container.querySelector('.add-rr-btn');
+        const removeBtn = container.querySelector('.remove-rr-btn');
+
+        // Удаляем старые кнопки RR
+        container.querySelectorAll('.rr-btn').forEach(btn => btn.remove());
+
+        // Добавляем новые кнопки RR
+        this.rrValues.forEach(value => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'rr-btn';
+            btn.dataset.rr = value;
+            btn.textContent = parseFloat(value) > 0 ? `+${value}` : value;
+            container.insertBefore(btn, addBtn);
+
+            btn.addEventListener('click', () => {
+                const resultInput = document.querySelector('input[name="result"]');
+                resultInput.value = value;
+
+                // Подсветка выбранной кнопки
+                container.querySelectorAll('.rr-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+    }
+
+    changeTradeType(tradeId) {
+        const trade = this.trades.find(t => t.id === parseInt(tradeId));
+        if (!trade) return;
+
+        // Проверяем возраст сделки
+        const tradeAge = Date.now() - new Date(trade.createdAt).getTime();
+        if (tradeAge >= 300000) { // 5 минут
+            notifications.warning('Нельзя изменить тип сделки (прошло больше 5 минут)');
+            return;
         }
 
-        this.trades.push(trade);
+        // Меняем тип
+        trade.type = trade.type === 'long' ? 'short' : 'long';
+
         this.saveTrades();
         this.updateDisplay();
-        notifications.success('Сделка добавлена');
-    }
 
-
-
-    deleteTrade(tradeId) {
-        this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
-        this.saveTrades();
-        this.updateDisplay();
-        notifications.success('Сделка удалена');
-    }
-
-    updateDisplay() {
-        document.querySelector('.trades-stats').innerHTML = this.renderStats();
-        document.querySelector('.trades-list').innerHTML = this.renderTradesList();
-    }
-
-    highlightDateButton(direction) {
-        const btn = document.getElementById(direction === 'prev' ? 'prevDateBtn' : 'nextDateBtn');
-        btn.classList.add('pressed');
-        setTimeout(() => btn.classList.remove('pressed'), 150);
+        const typeIcon = trade.type === 'long' ? '😇' : '😈';
+        const typeText = trade.type === 'long' ? 'LONG' : 'SHORT';
+        notifications.success(`Тип сделки изменен на ${typeIcon} ${typeText}`);
     }
 
     bindEvents() {
         console.log('🎯 bindEvents() вызван');
         const self = this;
-        console.log('📋 Форма найдена:', document.getElementById('tradeForm'));
-
-        const submitBtn = document.querySelector('#tradeForm button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.click();
-        } else {
-            // Если кнопки нет, отправляем событие submit напрямую
-            const form = document.getElementById('tradeForm');
-            if (form) {
-                console.log('🚀 Dispatching submit event from hotkey');
-                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-            }
-        }
-        console.log('🎯 Кнопка submit найдена:', submitButton);
 
         // Инициализируем RR кнопки при загрузке
         this.initializeRrButtons();
+
+        // Инициализация кастомных календарей
+        setTimeout(() => {
+            initCustomCalendars('input[type="date"]', {
+                language: 'en-US',
+                onDateSelect: (selectedDate) => {
+                    console.log('Date selected:', selectedDate);
+                }
+            });
+        }, 100);
+
+
+
+        // Сохранение последней выбранной валюты при изменении
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'currency') {
+                localStorage.setItem('lastSelectedCurrency', e.target.value);
+            }
+        });
+
+        // Сохранение последней выбранной группы при изменении
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'category') {
+                if (e.target.value) {
+                    localStorage.setItem('lastSelectedGroup', e.target.value);
+                }
+            }
+        });
+
+        // Добавление нового RR значения
+        document.getElementById('addRrBtn').addEventListener('click', () => {
+            this.showNewRrInput();
+        });
+
+        // Удаление RR значения
+        document.getElementById('removeRrBtn').addEventListener('click', () => {
+            this.removeCurrentRr();
+        });
+
         // Показать/скрыть форму
         document.getElementById('addTradeBtn').addEventListener('click', () => {
             const container = document.getElementById('tradeFormContainer');
@@ -686,46 +925,72 @@ export class BacktestModule {
             });
         });
 
-        // Быстрый выбор RR
-        document.querySelectorAll('.rr-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelector('input[name="result"]').value = btn.dataset.rr;
-            });
+        // Рандом режим
+        document.getElementById('randomMode').addEventListener('change', (e) => {
+            this.randomMode = e.target.checked;
+            localStorage.setItem('randomModeState', JSON.stringify(this.randomMode));
         });
 
-
-        // Существующий обработчик submit остается без изменений
-        // Обработчик submit через делегирование
-        document.addEventListener('submit', (e) => {
-            console.log('🎯 SUBMIT EVENT CAUGHT! Target:', e.target.id, e.target);
-
-            if (e.target.id === 'tradeForm') {
-                console.log('🔥 Form submitted via delegation!');
-                e.preventDefault();
-                console.log('🔥 Form submitted via delegation!');
-
-                const formData = new FormData(e.target);
-                const activeType = document.querySelector('.type-btn.active').dataset.type;
-
-                console.log('Form data:', {
-                    type: activeType,
-                    currency: formData.get('currency'),
-                    date: formData.get('date'),
-                    result: formData.get('result'),
-                    category: formData.get('category')
-                });
-
-                self.addTrade({  // this. -> self.
-                    type: activeType,
-                    currency: formData.get('currency'),
-                    date: formData.get('date'),
-                    result: parseFloat(formData.get('result')),
-                    category: formData.get('category')
-                });
-
-                self.clearForm();  // this. -> self.
-                document.getElementById('tradeFormContainer').style.display = 'none';
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('ungroup-btn')) {
+                const groupName = e.target.dataset.group;
+                this.ungroupTrades(groupName);
             }
+        });
+
+        // Сворачивание/разворачивание групп
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('collapse-btn')) {
+                const groupName = e.target.dataset.group;
+                this.toggleGroupCollapse(groupName);
+            }
+        });
+        // Обновленный обработчик submit формы в bindEvents():
+        document.getElementById('tradeForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('🔥 Form submitted!');
+
+            const formData = new FormData(e.target);
+            const activeType = document.querySelector('.type-btn.active').dataset.type;
+            let rrValue = formData.get('result');
+
+            // Если поле RR пустое - выбираем случайное значение
+            if (!rrValue || rrValue.trim() === '') {
+                const randomIndex = Math.floor(Math.random() * this.rrValues.length);
+                rrValue = this.rrValues[randomIndex];
+
+                // Устанавливаем значение в поле
+                document.querySelector('input[name="result"]').value = rrValue;
+
+                // Подсвечиваем соответствующую кнопку
+                document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
+                const targetBtn = document.querySelector(`[data-rr="${rrValue}"]`);
+                if (targetBtn) {
+                    targetBtn.classList.add('selected');
+                }
+
+                notifications.info(`Автоматически выбрано RR: ${rrValue}`);
+            }
+
+            console.log('Form data:', {
+                type: activeType,
+                currency: formData.get('currency'),
+                date: formData.get('date'),
+                result: rrValue,
+                category: formData.get('category')
+            });
+
+            self.addTrade({
+                type: activeType,
+                currency: formData.get('currency'),
+                date: formData.get('date'),
+                result: parseFloat(rrValue),
+                category: formData.get('category')
+            });
+
+            // Очищаем только поле RR для следующей сделки
+            document.querySelector('input[name="result"]').value = '';
+            document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
         });
 
         // Фильтры
@@ -748,6 +1013,7 @@ export class BacktestModule {
             this.currentFilter.dateTo = e.target.value;
             this.updateDisplay();
         });
+
         document.getElementById('groupFilter').addEventListener('change', (e) => {
             this.currentFilter.group = e.target.value;
             this.updateDisplay();
@@ -762,23 +1028,47 @@ export class BacktestModule {
             this.updateDisplay();
         });
 
-        // Удаление сделок
+        // Клик на дату для подстановки в форму
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) {
-                const tradeId = e.target.dataset.id;
-                this.deleteTrade(tradeId);
+            if (e.target.classList.contains('trade-date')) {
+                const date = e.target.dataset.date;
+                const formContainer = document.getElementById('tradeFormContainer');
+
+                // Открываем форму если закрыта
+                if (formContainer.style.display === 'none') {
+                    formContainer.style.display = 'block';
+                }
+
+                // Подставляем дату
+                document.querySelector('input[name="date"]').value = date;
+                notifications.info(`Дата ${this.formatDate(date)} подставлена в форму`);
             }
         });
 
-        // Быстрый выбор RR с подсветкой
+        // Клик на тип сделки для изменения
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('rr-btn')) {
-                const value = e.target.dataset.rr;
-                document.querySelector('input[name="result"]').value = value;
+            if (e.target.classList.contains('trade-type') && !e.target.classList.contains('disabled')) {
+                const tradeId = e.target.dataset.id;
+                this.changeTradeType(tradeId);
+            }
+        });
 
-                // Подсветка выбранной кнопки
-                document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
-                e.target.classList.add('selected');
+
+        // Обновить существующий обработчик удаления сделок
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn') && !e.target.classList.contains('disabled')) {
+                const tradeId = e.target.dataset.id;
+                const trade = this.trades.find(t => t.id === parseInt(tradeId));
+
+                if (trade) {
+                    const tradeAge = Date.now() - new Date(trade.createdAt).getTime();
+                    if (tradeAge >= 300000) { // 5 минут
+                        notifications.warning('Нельзя удалить сделку (прошло больше 5 минут)');
+                        return;
+                    }
+                }
+
+                this.deleteTrade(tradeId);
             }
         });
 
@@ -796,11 +1086,20 @@ export class BacktestModule {
             this.clearForm();
         });
 
-
-        // Очистка и группировка
+        // Обновить этот блок в методе bindEvents()
         document.getElementById('clearAllBtn').addEventListener('click', async () => {
+            const filteredCount = this.getFilteredTrades().length;
+            const totalCount = this.trades.length;
+
+            let message;
+            if (filteredCount === totalCount) {
+                message = `Удалить все ${totalCount} сделок из журнала?`;
+            } else {
+                message = `Удалить ${filteredCount} отфильтрованных сделок из ${totalCount} общих?`;
+            }
+
             const confirmed = await notifications.confirm(
-                'Удалить все сделки из журнала?',
+                message,
                 'Очистка журнала',
                 'Удалить',
                 'Отмена'
@@ -812,18 +1111,6 @@ export class BacktestModule {
             this.groupTrades();
         });
 
-        // Добавление нового RR значения
-        document.getElementById('addRrBtn').addEventListener('click', () => {
-            this.showNewRrInput();
-        });
-
-        // Удаление RR значения
-        document.getElementById('removeRrBtn').addEventListener('click', () => {
-            this.removeCurrentRr();
-        });
-
-        // Горячие клавиши
-        // Горячие клавиши
         // Горячие клавиши
         document.addEventListener('keydown', (e) => {
             const formContainer = document.getElementById('tradeFormContainer');
@@ -836,14 +1123,22 @@ export class BacktestModule {
                 return;
             }
 
-            // Enter для сохранения формы (когда форма открыта)
-            if (e.key === 'Enter' && isFormOpen && !e.target.matches('select, input[type="date"], input[type="number"]')) {
-                e.preventDefault();
-                document.querySelector('#tradeForm button[type="submit"]').click();
-                return;
-            }
-
+            // Если форма открыта
             if (isFormOpen) {
+                // Пробел для переключения RR значений (когда форма открыта)
+                if (e.code === 'Space' && !e.target.matches('input, textarea, select')) {
+                    e.preventDefault();
+                    this.cycleRrValue();
+                    return;
+                }
+
+                // Enter для сохранения формы
+                if (e.key === 'Enter' && !e.target.matches('select, input[type="date"], input[type="number"]')) {
+                    e.preventDefault();
+                    document.querySelector('#tradeForm button[type="submit"]').click();
+                    return;
+                }
+
                 // Стрелки влево/вправо для даты с подсветкой
                 if (e.code === 'ArrowLeft') {
                     e.preventDefault();
@@ -857,8 +1152,9 @@ export class BacktestModule {
                     this.highlightDateButton('next');
                 }
 
-                if (e.code === 'Tab' && isFormOpen) {
-                    // Проверяем, что мы не в полях ввода и форма открыта
+                // Tab для переключения типа сделки
+                if (e.code === 'Tab') {
+                    // Проверяем, что мы не в полях ввода
                     if (!e.target.matches('input, select, button')) {
                         e.preventDefault();
                         const activeBtn = document.querySelector('.type-btn.active');
@@ -868,21 +1164,6 @@ export class BacktestModule {
                             document.querySelector(`[data-type="${isLong ? 'short' : 'long'}"]`).classList.add('active');
                         }
                     }
-                }
-
-                if (e.code === 'Space' && !e.target.matches('input, select')) {
-                    e.preventDefault();
-                    const resultInput = document.querySelector('input[name="result"]');
-                    const isRandom = document.getElementById('randomMode').checked;
-
-                    const currentValue = resultInput.value;
-                    const nextValue = this.getNextRrValue(currentValue, isRandom);
-                    resultInput.value = nextValue;
-
-                    // Подсветка кнопки
-                    document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
-                    const selectedBtn = document.querySelector(`[data-rr="${nextValue}"]`);
-                    if (selectedBtn) selectedBtn.classList.add('selected');
                 }
             }
         });
