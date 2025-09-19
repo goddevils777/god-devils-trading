@@ -58,8 +58,9 @@ export class BacktestModule {
             <div class="form-group">
                 <label>Тип</label>
                 <div class="trade-type-buttons">
+                <button type="button" class="type-btn" data-type="short">😈 Short</button>
                     <button type="button" class="type-btn active" data-type="long">😇 Long</button>
-                    <button type="button" class="type-btn" data-type="short">😈 Short</button>
+                    
                 </div>
             </div>
             <div class="form-group">
@@ -89,6 +90,24 @@ export class BacktestModule {
                 </div>
             </div>
         </div>
+
+<div class="form-row">
+            <div class="form-group full-width">
+                <label>Скриншот сделки</label>
+                <div class="screenshot-paste-area" id="screenshotPasteArea">
+                    <div class="paste-placeholder">
+                        <span class="paste-icon">📷</span>
+                        <p>Нажми Ctrl+V чтобы вставить скриншот из буфера обмена</p>
+                        <small>Поддерживаются форматы: PNG, JPG, GIF</small>
+                    </div>
+                    <div class="image-preview" id="imagePreview" style="display: none;">
+                        <img id="previewImage" src="" alt="Preview">
+                        <button type="button" class="remove-image-btn" id="removeImageBtn">×</button>
+                    </div>
+                </div>
+                <input type="hidden" name="screenshotData" id="screenshotData">
+            </div>
+        </div>
         
         <div class="form-row">
             <div class="form-group">
@@ -104,7 +123,7 @@ export class BacktestModule {
                         <button type="button" class="remove-rr-btn" id="removeRrBtn">−</button>
                     </div>
                     <div class="rr-input-row">
-                        <input type="number" name="result" step="0.1" value="" placeholder="0" required>
+                        <input type="number" name="result" step="0.1" value="" placeholder="0">
                         <span class="random-toggle-label">Random</span>
                         <label class="random-toggle-switch">
                             <input type="checkbox" id="randomMode" ${this.randomMode ? 'checked' : ''}>
@@ -309,9 +328,31 @@ export class BacktestModule {
                         <div class="trade-result ${trade.result > 0 ? 'profit' : trade.result < 0 ? 'loss' : 'breakeven'}">
                             ${trade.result > 0 ? '+' : ''}${trade.result} RR
                         </div>
-                        <div class="trade-actions">
-                            <button class="delete-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="${canModify ? 'Удалить сделку' : 'Нельзя удалить (прошло больше 5 минут)'}">🗑</button>
-                        </div>
+
+<div class="trade-actions">
+                    ${(() => {
+                        console.log(`🔍 Trade ${trade.id}:`);
+                        console.log('  - screenshotData:', trade.screenshotData);
+                        console.log('  - type of screenshotData:', typeof trade.screenshotData);
+                        console.log('  - has screenshotData:', !!trade.screenshotData);
+                        console.log('  - screenshotData length:', trade.screenshotData ? trade.screenshotData.length : 'null');
+
+                        if (trade.screenshotData) {
+                            console.log('  ✅ Показываем кнопку скриншота');
+                            return `
+                                <button class="action-btn view-screenshot-btn" data-trade-id="${trade.id}" title="Посмотреть скриншот">
+                                    📸
+                                </button>
+                            `;
+                        } else {
+                            console.log('  ❌ Скриншот отсутствует');
+                            return '';
+                        }
+                    })()}
+                    <button class="action-btn delete-btn" data-trade-id="${trade.id}" title="Удалить сделку">
+                        🗑️
+                    </button>
+                </div>
                     </div>
                 `;
             }
@@ -413,17 +454,23 @@ export class BacktestModule {
         console.log('✅ Данные сохранены в localStorage');
     }
 
-    addTrade(tradeData) {
+    async addTrade(tradeData) {
         console.log('🔄 addTrade вызван с данными:', tradeData);
+        console.log('📸 screenshotData в tradeData:', tradeData.screenshotData);
 
         const trade = {
             id: Date.now(),
-            ...tradeData,
+            type: tradeData.type,
+            currency: tradeData.currency,
+            date: tradeData.date,
+            result: tradeData.result,
+            category: tradeData.category,
+            screenshotData: tradeData.screenshotData || null, // Сохраняем данные скриншота
             createdAt: new Date().toISOString()
         };
 
         console.log('💾 Создан объект сделки:', trade);
-        console.log('📊 Текущий массив trades до добавления:', this.trades.length);
+        console.log('📸 screenshotData в сделке:', trade.screenshotData ? 'Есть' : 'Отсутствует');
 
         if (tradeData.category) {
             const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
@@ -438,7 +485,6 @@ export class BacktestModule {
             localStorage.setItem('lastSelectedGroup', tradeData.category);
         }
 
-        // Добавить сохранение последней валютной пары
         if (tradeData.currency) {
             localStorage.setItem('lastSelectedCurrency', tradeData.currency);
         }
@@ -446,8 +492,91 @@ export class BacktestModule {
         this.trades.push(trade);
         this.saveTrades();
         this.updateDisplay();
-        notifications.success('Сделка добавлена');
+
+        const screenshotText = trade.screenshotData ? ' 📸' : '';
+        notifications.success(`Сделка добавлена${screenshotText}`);
     }
+
+    // Методы для работы со скриншотами
+    showScreenshotLoading(show) {
+        const input = document.querySelector('input[name="screenshotUrl"]');
+        if (input) {
+            if (show) {
+                input.classList.add('screenshot-loading');
+                input.disabled = true;
+            } else {
+                input.classList.remove('screenshot-loading');
+                input.disabled = false;
+            }
+        }
+    }
+
+    // Обновленный метод showScreenshotModal
+    showScreenshotModal(tradeId) {
+        const trade = this.trades.find(t => t.id === tradeId);
+        if (!trade || !trade.screenshotData) {
+            notifications.error('Скриншот не найден');
+            return;
+        }
+
+        // Создаем модальное окно если его еще нет
+        this.createScreenshotModal();
+
+        // Обновляем список сделок со скриншотами
+        this.updateTradesWithScreenshots(tradeId);
+
+        // Загружаем сделку в модальное окно
+        this.loadTradeInModal(trade);
+
+        // Показываем модальное окно
+        this.modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+
+
+    // Методы для работы со скриншотами
+    setScreenshotPreview(base64Data) {
+        const placeholder = document.querySelector('.paste-placeholder');
+        const preview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImage');
+        const hiddenInput = document.getElementById('screenshotData');
+
+        if (placeholder && preview && previewImg && hiddenInput) {
+            // Скрываем placeholder и показываем превью
+            placeholder.style.display = 'none';
+            preview.style.display = 'block';
+
+            // Устанавливаем изображение
+            previewImg.src = base64Data;
+
+            // Сохраняем данные в скрытое поле
+            hiddenInput.value = base64Data;
+
+            console.log('📸 Скриншот установлен в превью');
+        }
+    }
+
+    clearScreenshot() {
+        const placeholder = document.querySelector('.paste-placeholder');
+        const preview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImage');
+        const hiddenInput = document.getElementById('screenshotData');
+
+        if (placeholder && preview && previewImg && hiddenInput) {
+            // Показываем placeholder и скрываем превью
+            placeholder.style.display = 'flex';
+            preview.style.display = 'none';
+
+            // Очищаем данные
+            previewImg.src = '';
+            hiddenInput.value = '';
+
+            console.log('📸 Скриншот удален');
+            notifications.info('Скриншот удален');
+        }
+    }
+
+
 
     deleteTrade(tradeId) {
         this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
@@ -540,14 +669,37 @@ export class BacktestModule {
     }
 
     initializeRrButtons() {
-        const rrButtons = document.querySelectorAll('.rr-btn');
+        const container = document.getElementById('rrButtonsContainer');
+        const addBtn = document.getElementById('addRrBtn');
+        if (!container || !addBtn) return;
 
-        rrButtons.forEach(btn => {
+        // Очищаем существующие кнопки (кроме кнопки добавления)
+        container.querySelectorAll('.rr-btn:not(#addRrBtn)').forEach(btn => btn.remove());
+
+        // Создаем кнопки для каждого RR значения
+        this.rrValues.forEach(value => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'rr-btn';
+            btn.dataset.rr = value;
+
+            // ДОБАВЛЯЕМ ЦВЕТОВЫЕ КЛАССЫ
+            const numValue = parseFloat(value);
+            if (numValue > 0) {
+                btn.classList.add('positive');
+            } else if (numValue < 0) {
+                btn.classList.add('negative');
+            }
+
+            btn.textContent = numValue > 0 ? `+${value}` : value;
+            container.insertBefore(btn, addBtn);
+
             btn.addEventListener('click', () => {
-                const value = btn.dataset.rr;
-                document.querySelector('input[name="result"]').value = value;
+                const resultInput = document.querySelector('input[name="result"]');
+                resultInput.value = value;
 
-                rrButtons.forEach(b => b.classList.remove('selected'));
+                // Подсветка выбранной кнопки
+                container.querySelectorAll('.rr-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
             });
         });
@@ -614,8 +766,75 @@ export class BacktestModule {
         const dateInput = document.querySelector('input[name="date"]');
         const currentDate = new Date(dateInput.value);
         currentDate.setDate(currentDate.getDate() + days);
-        dateInput.value = currentDate.toISOString().split('T')[0];
+        const newDateStr = currentDate.toISOString().split('T')[0];
+        dateInput.value = newDateStr;
+
+        // ДОБАВЛЯЕМ: Обновляем день недели в лейбле
+        this.updateDateLabel(newDateStr);
+
+        // Trigger change event для других обработчиков
+        dateInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
+
+    // ДОБАВЛЯЕМ новый метод для обновления лейбла
+    updateDateLabel(dateStr) {
+        const date = new Date(dateStr + 'T12:00:00');
+        const daysRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const dayName = daysRu[date.getDay()];
+
+        // Ищем label для поля даты
+        const dateInput = document.querySelector('input[name="date"]');
+        const label = dateInput?.closest('.form-group')?.querySelector('label');
+
+        if (label) {
+            const originalText = label.textContent.split('(')[0]; // Убираем старый день если есть
+            label.textContent = `${originalText}(${dayName})`;
+        }
+    }
+
+    // Методы для работы со скриншотами
+    аsetScreenshotPreview(base64Data) {
+        const placeholder = document.querySelector('.paste-placeholder');
+        const preview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImage');
+        const hiddenInput = document.getElementById('screenshotData');
+
+        if (placeholder && preview && previewImg && hiddenInput) {
+            // Скрываем placeholder и показываем превью
+            placeholder.style.display = 'none';
+            preview.style.display = 'block';
+
+            // Устанавливаем изображение
+            previewImg.src = base64Data;
+
+            // Сохраняем данные в скрытое поле
+            hiddenInput.value = base64Data;
+
+            console.log('📸 Скриншот установлен в превью');
+        }
+    }
+
+    clearScreenshot() {
+        const placeholder = document.querySelector('.paste-placeholder');
+        const preview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImage');
+        const hiddenInput = document.getElementById('screenshotData');
+
+        if (placeholder && preview && previewImg && hiddenInput) {
+            // Показываем placeholder и скрываем превью
+            placeholder.style.display = 'flex';
+            preview.style.display = 'none';
+
+            // Очищаем данные
+            previewImg.src = '';
+            hiddenInput.value = '';
+
+            console.log('📸 Скриншот удален');
+            notifications.info('Скриншот удален');
+        }
+    }
+
+
 
     // Обновленный метод clearForm
     clearForm() {
@@ -812,6 +1031,8 @@ export class BacktestModule {
         }
     }
 
+
+
     updateRrButtons() {
         const container = document.querySelector('.rr-buttons');
         const addBtn = container.querySelector('.add-rr-btn');
@@ -862,6 +1083,292 @@ export class BacktestModule {
         notifications.success(`Тип сделки изменен на ${typeIcon} ${typeText}`);
     }
 
+
+    createScreenshotModal() {
+        // Проверяем если модалка уже создана
+        if (document.getElementById('screenshotModal')) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'screenshotModal';
+        modal.className = 'screenshot-modal';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-trade-info"></div>
+                    <button class="modal-close-btn">×</button>
+                </div>
+                <div class="modal-body">
+                    <button class="nav-btn prev" id="prevTradeBtn">←</button>
+                    <img class="modal-screenshot" src="" alt="Screenshot">
+                    <button class="nav-btn next" id="nextTradeBtn">→</button>
+                    <div class="modal-controls">
+                        <span id="modalZoomInfo">Клик для увеличения • ← → навигация</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Элементы модального окна
+        const img = modal.querySelector('.modal-screenshot');
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const closeBtn = modal.querySelector('.modal-close-btn');
+        const prevBtn = modal.querySelector('#prevTradeBtn');
+        const nextBtn = modal.querySelector('#nextTradeBtn');
+        const zoomInfo = modal.querySelector('#modalZoomInfo');
+
+        // Переменные для drag & drop
+        let isDragging = false;
+        let dragStartX, dragStartY, imgStartX, imgStartY;
+        let currentTradeIndex = 0;
+        let tradesWithScreenshots = [];
+
+        // Закрытие модального окна
+        const closeModal = () => {
+            modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+            this.resetImageTransform(img);
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', closeModal);
+
+        // Клик на изображение - увеличение к точке клика
+        img.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.zoomToPoint(img, e, zoomInfo);
+        });
+
+        // Исправленный Drag & Drop
+        img.addEventListener('mousedown', (e) => {
+            const zoomLevel = parseInt(img.dataset.zoomLevel || '1');
+            if (zoomLevel > 1) {
+                isDragging = true;
+                img.classList.add('dragging');
+
+                // Сохраняем начальные позиции мыши и изображения
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                imgStartX = parseInt(img.style.left) || 0;
+                imgStartY = parseInt(img.style.top) || 0;
+
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+
+            // Простое перемещение без сложных вычислений границ
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+            const newX = imgStartX + deltaX;
+            const newY = imgStartY + deltaY;
+
+            // Применяем новые позиции
+            img.style.left = newX + 'px';
+            img.style.top = newY + 'px';
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                img.classList.remove('dragging');
+                e.stopPropagation();
+            }
+        });
+
+        // Навигация между сделками
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showPreviousScreenshot();
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showNextScreenshot();
+        });
+
+        // Клавиатурная навигация
+        document.addEventListener('keydown', (e) => {
+            if (modal.style.display !== 'none') {
+                switch (e.key) {
+                    case 'Escape':
+                        closeModal();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        this.showPreviousScreenshot();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        this.showNextScreenshot();
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        this.zoomToPoint(img, e, zoomInfo);
+                        break;
+                }
+            }
+        });
+
+        // Сохраняем ссылки для использования в других методах
+        this.modal = modal;
+        this.modalImg = img;
+        this.modalZoomInfo = zoomInfo;
+        this.modalPrevBtn = prevBtn;
+        this.modalNextBtn = nextBtn;
+    }
+
+    zoomToPoint(img, event, zoomInfo) {
+        let currentZoom = parseInt(img.dataset.zoomLevel || '1');
+        const newZoom = currentZoom >= 3 ? 1 : currentZoom + 1;
+
+        if (newZoom === 1) {
+            this.resetImageTransform(img);
+        } else {
+            img.classList.add('zoomed');
+            img.style.transform = `scale(${newZoom}) translate(-50%, -50%)`;
+            img.dataset.zoomLevel = newZoom;
+        }
+
+        // Обновляем информацию о зуме
+        if (zoomInfo) {
+            const position = `${this.currentTradeIndex + 1} / ${this.tradesWithScreenshots.length}`;
+            const zoomText = newZoom === 1 ? 'Клик для увеличения' : `${newZoom}x • Зажми и тяни`;
+            zoomInfo.textContent = `${position} • ${zoomText} • ← → навигация`;
+        }
+    }
+
+    // Вспомогательные методы для модального окна
+    updateTradesWithScreenshots(currentTradeId) {
+        // Получаем все сделки со скриншотами, отсортированные по времени создания
+        this.tradesWithScreenshots = this.trades
+            .filter(t => t.screenshotData)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Находим индекс текущей сделки
+        this.currentTradeIndex = this.tradesWithScreenshots.findIndex(t => t.id === currentTradeId);
+
+        // Обновляем состояние навигационных кнопок
+        this.updateNavigationButtons();
+    }
+
+    updateNavigationButtons() {
+        if (!this.modalPrevBtn || !this.modalNextBtn) return;
+
+        const totalTrades = this.tradesWithScreenshots.length;
+
+        this.modalPrevBtn.disabled = this.currentTradeIndex >= totalTrades - 1;
+        this.modalNextBtn.disabled = this.currentTradeIndex <= 0;
+
+        // Обновляем информацию о позиции
+        if (this.modalZoomInfo) {
+            const position = `${this.currentTradeIndex + 1} / ${totalTrades}`;
+            this.modalZoomInfo.textContent = `${position} • Клик для увеличения • ← → навигация`;
+        }
+    }
+
+    showPreviousScreenshot() {
+        if (this.currentTradeIndex < this.tradesWithScreenshots.length - 1) {
+            this.currentTradeIndex++;
+            const prevTrade = this.tradesWithScreenshots[this.currentTradeIndex];
+            this.loadTradeInModal(prevTrade);
+        }
+    }
+
+    showNextScreenshot() {
+        if (this.currentTradeIndex > 0) {
+            this.currentTradeIndex--;
+            const nextTrade = this.tradesWithScreenshots[this.currentTradeIndex];
+            this.loadTradeInModal(nextTrade);
+        }
+    }
+
+    loadTradeInModal(trade) {
+        if (!this.modalImg || !this.modal) return;
+
+        // Сбрасываем трансформации
+        this.resetImageTransform(this.modalImg);
+
+        // Загружаем новое изображение
+        this.modalImg.src = trade.screenshotData;
+
+        // Обновляем информацию о сделке
+        const tradeInfo = this.modal.querySelector('.modal-trade-info');
+
+        // В методе loadTradeInModal() замени блок обновления информации:
+        if (tradeInfo) {
+            const typeIcon = trade.type === 'long' ? '😇' : '😈';
+            const typeText = trade.type === 'long' ? 'LONG' : 'SHORT';
+            const typeClass = trade.type === 'long' ? 'trade-type-long' : 'trade-type-short';
+            const resultText = trade.result > 0 ? `+${trade.result}` : trade.result;
+            tradeInfo.innerHTML = `
+                <span class="${typeClass}">${typeIcon} ${typeText}</span> 
+                <strong>${trade.currency}</strong> • 
+                <span class="${trade.result > 0 ? 'profit' : 'loss'}">${resultText}</span> • 
+                ${this.formatDate(trade.date)}
+            `;
+        }
+
+        // Обновляем навигацию
+        this.updateNavigationButtons();
+    }
+
+    zoomScreenshot(img, zoomInfo) {
+        let currentZoom = parseInt(img.dataset.zoomLevel || '1');
+
+        // Циклический зум: 1x -> 2x -> 3x -> 1x
+        currentZoom = currentZoom >= 3 ? 1 : currentZoom + 1;
+
+        if (currentZoom === 1) {
+            this.resetImageTransform(img);
+        } else {
+            img.style.transform = `scale(${currentZoom})`;
+            img.style.position = 'relative';
+            img.style.left = '0px';
+            img.style.top = '0px';
+            img.classList.add('zoomed');
+        }
+
+        img.dataset.zoomLevel = currentZoom;
+
+        // Обновляем информацию о зуме
+        if (zoomInfo) {
+            const position = `${this.currentTradeIndex + 1} / ${this.tradesWithScreenshots.length}`;
+            const zoomText = currentZoom === 1 ? 'Клик для увеличения' : `${currentZoom}x • Зажми и тяни`;
+            zoomInfo.textContent = `${position} • ${zoomText} • ← → навигация`;
+        }
+    }
+
+    resetImageTransform(img) {
+        img.style.transform = 'scale(1)';
+        img.style.position = 'relative';
+        img.style.left = '0px';
+        img.style.top = '0px';
+        img.dataset.zoomLevel = '1';
+        img.classList.remove('zoomed');
+    }
+
+
+    zoomScreenshot(img) {
+        let currentZoom = parseInt(img.dataset.zoomLevel);
+
+        // Циклический зум: 1x -> 2x -> 3x -> 1x
+        currentZoom = currentZoom >= 3 ? 1 : currentZoom + 1;
+
+        img.style.transform = `scale(${currentZoom})`;
+        img.dataset.zoomLevel = currentZoom;
+
+        const zoomInfo = img.closest('.modal-body').querySelector('.zoom-info');
+        zoomInfo.textContent = currentZoom === 1 ? 'Кликни на изображение для увеличения' : `Увеличение: ${currentZoom}x`;
+
+        console.log('🔍 Зум изображения:', currentZoom + 'x');
+    }
     bindEvents() {
         console.log('🎯 bindEvents() вызван');
         const self = this;
@@ -879,7 +1386,86 @@ export class BacktestModule {
             });
         }, 100);
 
+        // Обработчик просмотра скриншота
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('view-screenshot-btn')) {
+                const tradeId = parseInt(e.target.dataset.tradeId);
+                this.showScreenshotModal(tradeId);
+            }
+        });
 
+        // Обработчик вставки изображений из буфера обмена - С ОТЛАДКОЙ
+        document.addEventListener('paste', (e) => {
+            console.log('📋 Paste event detected');
+
+            const pasteArea = document.getElementById('screenshotPasteArea');
+            const formContainer = document.getElementById('tradeFormContainer');
+
+            console.log('📋 Paste area found:', !!pasteArea);
+            console.log('📋 Form container display:', formContainer?.style.display);
+
+            if (!pasteArea || formContainer?.style.display === 'none') {
+                console.log('📋 Форма не открыта, игнорируем paste');
+                return;
+            }
+
+            const items = e.clipboardData?.items;
+            console.log('📋 Clipboard items:', items ? items.length : 'null');
+
+            if (!items) {
+                console.log('📋 Нет clipboard items');
+                return;
+            }
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                console.log('📋 Item', i, ':', item.type);
+
+                if (item.type.indexOf('image') !== -1) {
+                    console.log('📋 Найдено изображение:', item.type);
+                    e.preventDefault(e);
+
+                    const file = item.getAsFile();
+                    console.log('📋 File:', file);
+
+                    if (!file) {
+                        console.log('📋 Не удалось получить файл');
+                        continue;
+                    }
+
+                    const reader = new FileReader();
+
+                    reader.onload = (event) => {
+                        console.log('📋 FileReader onload');
+                        const base64 = event.target.result;
+                        console.log('📋 Base64 length:', base64.length);
+
+                        self.setScreenshotPreview(base64);
+                        notifications.success('Скриншот вставлен из буфера обмена');
+                    };
+
+                    reader.onerror = (error) => {
+                        console.error('📋 FileReader error:', error);
+                    };
+
+                    reader.readAsDataURL(file);
+                    break;
+                }
+            }
+        });
+        // Обработчик удаления изображения - ИСПРАВЛЕНО
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'removeImageBtn') {
+                self.clearScreenshot(); // Используем self вместо this
+            }
+        });
+
+        // Клик по области для фокуса
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#screenshotPasteArea')) {
+                notifications.info('Нажми ⌘+V чтобы вставить скриншот');
+            }
+        });
 
         // Сохранение последней выбранной валюты при изменении
         document.addEventListener('change', (e) => {
@@ -888,12 +1474,12 @@ export class BacktestModule {
             }
         });
 
-        // Сохранение последней выбранной группы при изменении
+        // Сохранение последней выбранной группы при изменении - ИСПРАВЛЕНО
         document.addEventListener('change', (e) => {
             if (e.target.name === 'category') {
-                if (e.target.value) {
-                    localStorage.setItem('lastSelectedGroup', e.target.value);
-                }
+                // Сохраняем ЛЮБОЕ значение, даже пустое (для "Без группы")
+                localStorage.setItem('lastSelectedGroup', e.target.value);
+                console.log('Сохранена группа:', e.target.value || 'Без группы');
             }
         });
 
@@ -945,8 +1531,9 @@ export class BacktestModule {
                 this.toggleGroupCollapse(groupName);
             }
         });
+
         // Обновленный обработчик submit формы в bindEvents():
-        document.getElementById('tradeForm').addEventListener('submit', (e) => {
+        document.getElementById('tradeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('🔥 Form submitted!');
 
@@ -972,25 +1559,31 @@ export class BacktestModule {
                 notifications.info(`Автоматически выбрано RR: ${rrValue}`);
             }
 
-            console.log('Form data:', {
-                type: activeType,
-                currency: formData.get('currency'),
-                date: formData.get('date'),
-                result: rrValue,
-                category: formData.get('category')
-            });
-
-            self.addTrade({
+            const tradeData = {
                 type: activeType,
                 currency: formData.get('currency'),
                 date: formData.get('date'),
                 result: parseFloat(rrValue),
-                category: formData.get('category')
-            });
+                category: formData.get('category'),
+                screenshotData: formData.get('screenshotData') || null // Изменено на screenshotData
+            };
 
-            // Очищаем только поле RR для следующей сделки
-            document.querySelector('input[name="result"]').value = '';
-            document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
+            console.log('📊 Trade data:', tradeData);
+
+            try {
+                await self.addTrade(tradeData);
+
+                // Очищаем только поле RR для следующей сделки
+                document.querySelector('input[name="result"]').value = '';
+                document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
+
+                // Очищаем скриншот
+                this.clearScreenshot();
+
+            } catch (error) {
+                console.error('❌ Ошибка при добавлении сделки:', error);
+                notifications.error('Ошибка при сохранении сделки');
+            }
         });
 
         // Фильтры
@@ -1052,7 +1645,6 @@ export class BacktestModule {
                 this.changeTradeType(tradeId);
             }
         });
-
 
         // Обновить существующий обработчик удаления сделок
         document.addEventListener('click', (e) => {
@@ -1167,5 +1759,14 @@ export class BacktestModule {
                 }
             }
         });
+
+        // Инициализация дня недели при загрузке страницы
+        setTimeout(() => {
+            const dateInput = document.querySelector('input[name="date"]');
+            if (dateInput && dateInput.value) {
+                this.updateDateLabel(dateInput.value);
+                console.log('Инициализирован день недели для даты:', dateInput.value);
+            }
+        }, 100);
     }
 }

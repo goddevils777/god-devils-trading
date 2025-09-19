@@ -5,6 +5,9 @@ import rateLimit from 'express-rate-limit';
 import { SignalsWebSocket } from './websocket.js';
 import { database } from './database.js';
 import { createServer } from 'http';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -16,8 +19,11 @@ const PORT = process.env.PORT || 8080;
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'https://god-devils-trading.netlify.app'  // замени на реальный URL
+        'http://127.0.0.1:5173',
+        'https://god-devils-trading.netlify.app'
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
 
@@ -71,7 +77,7 @@ app.use('/api/signals', signalsRoutes);
 app.post('/api/signal', async (req, res) => {
     try {
         const { type, symbol, price, session, confidence } = req.body;
-        
+
         if (!type || !['long', 'short'].includes(type.toLowerCase())) {
             return res.status(400).json({ error: 'Invalid signal type' });
         }
@@ -92,7 +98,7 @@ app.post('/api/signal', async (req, res) => {
         console.log(`🔔 Signal from TradingView:`, signal);
         console.log(`📡 Broadcasted to ${sentCount} clients`);
 
-        res.json({ 
+        res.json({
             status: 'success',
             message: 'Signal received and broadcasted',
             signal: savedSignal,
@@ -102,6 +108,67 @@ app.post('/api/signal', async (req, res) => {
     } catch (error) {
         console.error('Error processing signal:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Добавь этот роут после существующих API роутов
+app.post('/api/screenshot/download', async (req, res) => {
+    try {
+        const { url } = req.body;
+
+        if (!url || !url.includes('tradingview.com')) {
+            return res.status(400).json({ error: 'Invalid TradingView URL' });
+        }
+
+        console.log('📸 Загружаем скриншот:', url);
+
+        // Конвертируем TradingView URL
+        let imageUrl = url;
+        if (url.includes('/x/')) {
+            const match = url.match(/\/x\/([^\/]+)/);
+            if (match) {
+                const chartId = match[1];
+                imageUrl = `https://www.tradingview.com/x/${chartId}/chart.png`;
+            }
+        }
+
+        // Загружаем изображение
+        const response = await fetch(imageUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/*',
+                'Referer': 'https://www.tradingview.com/',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Конвертируем в base64
+        const buffer = await response.buffer();
+        const base64 = `data:${response.headers.get('content-type')};base64,${buffer.toString('base64')}`;
+
+        console.log('✅ Скриншот загружен, размер:', buffer.length, 'байт');
+
+        res.json({
+            success: true,
+            data: {
+                originalUrl: url,
+                imageUrl: imageUrl,
+                base64: base64,
+                timestamp: new Date().toISOString(),
+                size: buffer.length
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка загрузки скриншота:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to download screenshot',
+            message: error.message
+        });
     }
 });
 
@@ -115,6 +182,8 @@ app.use((err, req, res, next) => {
 app.use('*', (req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
+
+
 
 // WebSocket сервер для сигналов
 const signalsWS = new SignalsWebSocket(server);

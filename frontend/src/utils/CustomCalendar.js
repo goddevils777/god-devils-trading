@@ -8,7 +8,7 @@ export class CustomCalendar {
             theme: options.theme || 'default',
             ...options
         };
-        
+
         // Если в input есть значение, устанавливаем его как текущую дату для календаря
         if (inputElement.value) {
             this.currentDate = new Date(inputElement.value + 'T00:00:00');
@@ -17,32 +17,32 @@ export class CustomCalendar {
             this.currentDate = new Date();
             this.selectedDate = null;
         }
-        
+
         this.isOpen = false;
-        
-        this.monthNames = this.options.language === 'ru-RU' ? 
+
+        this.monthNames = this.options.language === 'ru-RU' ?
             ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'] :
+                'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'] :
             ['January', 'February', 'March', 'April', 'May', 'June',
-             'July', 'August', 'September', 'October', 'November', 'December'];
-             
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
         this.weekDays = this.options.language === 'ru-RU' ?
             ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] :
             ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-        
+
         this.setupCustomCalendar();
     }
-    
+
     setupCustomCalendar() {
         // Скрываем нативный календарь
         this.input.style.position = 'relative';
-        
+
         // Создаем обертку
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-date-wrapper';
         this.input.parentNode.insertBefore(wrapper, this.input);
         wrapper.appendChild(this.input);
-        
+
         // Создаем кнопку календаря
         const calendarBtn = document.createElement('button');
         calendarBtn.type = 'button';
@@ -50,45 +50,47 @@ export class CustomCalendar {
         calendarBtn.innerHTML = '📅';
         calendarBtn.setAttribute('aria-label', 'Open calendar');
         wrapper.appendChild(calendarBtn);
-        
+
         // Создаем календарь
         this.calendar = document.createElement('div');
         this.calendar.className = 'custom-calendar';
         this.calendar.setAttribute('role', 'dialog');
         this.calendar.setAttribute('aria-label', 'Date picker');
         wrapper.appendChild(this.calendar);
-        
+
         this.attachEventListeners(wrapper, calendarBtn);
         this.loadStyles();
     }
-    
+
     attachEventListeners(wrapper, calendarBtn) {
         // Открытие календаря
         calendarBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggle();
         });
-        
+
         this.input.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggle();
         });
-        
-        // Закрытие при клике вне календаря
+
+        // Закрытие при клике вне календаря - ИСПРАВЛЯЕМ
         document.addEventListener('click', (e) => {
-            if (!wrapper.contains(e.target)) {
+            // Проверяем что клик НЕ внутри календаря и НЕ на навигационных кнопках
+            if (!wrapper.contains(e.target) &&
+                !e.target.classList.contains('calendar-nav') &&
+                !e.target.classList.contains('quick-date-btn')) {
                 this.close();
             }
         });
-        
+
         // Клавиатурная навигация
         this.calendar.addEventListener('keydown', (e) => {
             this.handleKeyDown(e);
         });
     }
-    
     handleKeyDown(e) {
-        switch(e.key) {
+        switch (e.key) {
             case 'Escape':
                 this.close();
                 this.input.focus();
@@ -100,7 +102,7 @@ export class CustomCalendar {
                 break;
         }
     }
-    
+
     toggle() {
         if (this.isOpen) {
             this.close();
@@ -108,71 +110,88 @@ export class CustomCalendar {
             this.open();
         }
     }
-    
+
     open() {
         this.isOpen = true;
+
+        // ВАЖНО: Синхронизируем календарь с датой в input перед открытием
+        if (this.input.value) {
+            const inputDate = new Date(this.input.value + 'T12:00:00');
+            this.currentDate = new Date(inputDate); // Переходим к месяцу из input
+            this.selectedDate = new Date(inputDate); // Отмечаем дату как выбранную
+            console.log('Открываем календарь на дате из input:', this.input.value);
+        }
+
         this.calendar.style.display = 'block';
-        
+
         // Анимация появления
         requestAnimationFrame(() => {
             this.calendar.style.opacity = '1';
             this.calendar.style.transform = 'translateY(0)';
         });
-        
-        this.render();
-        
+
+        this.render(); // Рендерим с правильной датой
+
         // Фокус на календаре для accessibility
         setTimeout(() => {
-            const todayEl = this.calendar.querySelector('.calendar-day.today') || 
-                           this.calendar.querySelector('.calendar-day:not(.empty)');
-            if (todayEl) todayEl.focus();
+            const selectedDay = this.calendar.querySelector('.calendar-day.selected') ||
+                this.calendar.querySelector('.calendar-day.today') ||
+                this.calendar.querySelector('.calendar-day:not(.empty)');
+            if (selectedDay) selectedDay.focus();
         }, 100);
     }
-    
+
     close() {
         if (!this.isOpen) return;
-        
+
         this.isOpen = false;
         this.calendar.style.opacity = '0';
         this.calendar.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             this.calendar.style.display = 'none';
         }, 200);
     }
-    
+
     render() {
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
         const today = new Date();
-        
+
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+
         let html = `
             <div class="calendar-header">
                 <button type="button" class="calendar-nav" data-action="prev-month" aria-label="Previous month">‹</button>
-                <span class="calendar-title">${this.monthNames[month]} ${year}</span>
+                <span class="calendar-title">${this.monthNames[month]}(${String(month + 1).padStart(2, '0')}) ${year}</span>
                 <button type="button" class="calendar-nav" data-action="next-month" aria-label="Next month">›</button>
+            </div>
+            <div class="quick-dates">
+                <button type="button" class="quick-date-btn" data-action="yesterday">Вчера</button>
+                <button type="button" class="quick-date-btn" data-action="today">Сегодня</button>
+                <button type="button" class="quick-date-btn" data-action="tomorrow">Завтра</button>
             </div>
             <div class="calendar-weekdays">
                 ${this.weekDays.map(day => `<div>${day}</div>`).join('')}
             </div>
             <div class="calendar-days">
         `;
-        
+
         // Пустые ячейки для начала месяца
         for (let i = 0; i < firstDay; i++) {
             html += '<div class="calendar-day empty" aria-hidden="true"></div>';
         }
-        
+
+
         // Дни месяца
         for (let day = 1; day <= daysInMonth; day++) {
+            // ИСПРАВЛЯЕМ формирование даты - используем ручное форматирование
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const date = new Date(year, month, day);
-            const dateStr = date.toISOString().split('T')[0];
             const isToday = date.toDateString() === today.toDateString();
             const isSelected = this.selectedDate && date.toDateString() === this.selectedDate.toDateString();
-            
+
             html += `<div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" 
                           data-date="${dateStr}" 
                           role="button" 
@@ -180,14 +199,16 @@ export class CustomCalendar {
                           aria-label="${this.monthNames[month]} ${day}, ${year}"
                           ${isSelected ? 'aria-pressed="true"' : ''}>${day}</div>`;
         }
-        
+
         html += '</div>';
         this.calendar.innerHTML = html;
-        
-        // Привязываем события
-        this.calendar.addEventListener('click', (e) => this.handleCalendarClick(e));
+
+        // УБИРАЕМ СТАРЫЕ ОБРАБОТЧИКИ И ПРИВЯЗЫВАЕМ ЗАНОВО
+        this.calendar.removeEventListener('click', this.boundHandleClick);
+        this.boundHandleClick = (e) => this.handleCalendarClick(e);
+        this.calendar.addEventListener('click', this.boundHandleClick);
     }
-    
+
     handleCalendarClick(e) {
         if (e.target.classList.contains('calendar-day') && !e.target.classList.contains('empty')) {
             const dateStr = e.target.dataset.date;
@@ -197,28 +218,74 @@ export class CustomCalendar {
             if (action === 'prev-month') {
                 this.currentDate.setMonth(this.currentDate.getMonth() - 1);
                 this.render();
+                // НЕ ЗАКРЫВАЕМ календарь при переключении месяца
             } else if (action === 'next-month') {
                 this.currentDate.setMonth(this.currentDate.getMonth() + 1);
                 this.render();
+                // НЕ ЗАКРЫВАЕМ календарь при переключении месяца
+            }
+        } else if (e.target.classList.contains('quick-date-btn')) {
+            const action = e.target.dataset.action;
+            const today = new Date();
+            let targetDate;
+
+            switch (action) {
+                case 'today':
+                    targetDate = new Date(today);
+                    break;
+                case 'yesterday':
+                    targetDate = new Date(today);
+                    targetDate.setDate(today.getDate() - 1);
+                    break;
+                case 'tomorrow':
+                    targetDate = new Date(today);
+                    targetDate.setDate(today.getDate() + 1);
+                    break;
+            }
+
+            if (targetDate) {
+                // Переходим к месяцу выбранной даты
+                this.currentDate = new Date(targetDate);
+                const dateStr = targetDate.toISOString().split('T')[0];
+                this.selectDate(dateStr);
             }
         }
     }
-    
+
+
+    // Добавь этот метод в класс CustomCalendar
+    updateDateLabel(dateStr) {
+        const date = new Date(dateStr + 'T12:00:00');
+        const daysRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const dayName = daysRu[date.getDay()];
+
+        // Ищем label который относится к нашему input
+        const label = document.querySelector(`label[for="${this.input.id}"]`) ||
+            this.input.closest('.form-group')?.querySelector('label');
+
+        if (label) {
+            const originalText = label.textContent.split('(')[0]; // Убираем старый день если есть
+            label.textContent = `${originalText}(${dayName})`;
+        }
+    }
+
+    // Обнови метод selectDate чтобы вызывать updateDateLabel
     selectDate(dateStr) {
         this.input.value = dateStr;
-        this.selectedDate = new Date(dateStr);
+        this.selectedDate = new Date(dateStr + 'T12:00:00');
+        this.updateDateLabel(dateStr); // Добавь эту строку
         this.close();
-        
+
         // Callback
         if (this.options.onDateSelect) {
             this.options.onDateSelect(dateStr);
         }
-        
+
         // Trigger события
         this.input.dispatchEvent(new Event('change', { bubbles: true }));
         this.input.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    
+
     destroy() {
         if (this.calendar) {
             this.calendar.remove();
@@ -230,17 +297,17 @@ export class CustomCalendar {
             wrapper.remove();
         }
     }
-    
+
     loadStyles() {
         // Проверяем, загружены ли уже стили
         if (document.querySelector('#custom-calendar-styles')) return;
-        
+
         const styleSheet = document.createElement('style');
         styleSheet.id = 'custom-calendar-styles';
         styleSheet.textContent = this.getCSS();
         document.head.appendChild(styleSheet);
     }
-    
+
     getCSS() {
         return `
 /* Custom Calendar Styles */
@@ -292,6 +359,40 @@ export class CustomCalendar {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
+}
+
+.quick-dates {
+    display: flex;
+    gap: 2px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+}
+
+.quick-date-btn {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-height: 24px;
+    user-select: none;
+}
+
+.quick-date-btn:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    border-color: var(--yellow-primary);
+    transform: scale(1.02);
+}
+
+.quick-date-btn:active {
+    transform: scale(0.98);
 }
 
 .calendar-nav {
@@ -422,7 +523,7 @@ export class CustomCalendar {
 export function initCustomCalendars(selector = 'input[type="date"]', options = {}) {
     const dateInputs = document.querySelectorAll(selector);
     const instances = [];
-    
+
     dateInputs.forEach(input => {
         if (!input.classList.contains('custom-calendar-initialized')) {
             input.classList.add('custom-calendar-initialized');
@@ -430,6 +531,6 @@ export function initCustomCalendars(selector = 'input[type="date"]', options = {
             instances.push(instance);
         }
     });
-    
+
     return instances;
 }

@@ -1550,6 +1550,7 @@ input[type="date"]::-moz-focus-inner {
     background: transparent;
     border-radius: 4px;
     margin: 0;
+    text-align: center;
 }
 
 .date-controls input[type="date"]:focus {
@@ -1622,6 +1623,10 @@ input[type="date"]:valid {
     color: var(--text-primary);
 }
 
+.custom-date-wrapper {
+    text-align: center;
+}
+
 /* Modern Tooltip for Date Format */
 .date-controls::before {
     content: attr(data-tooltip);
@@ -1643,4 +1648,507 @@ input[type="date"]:valid {
 
 .date-controls:hover::before {
     opacity: 1;
+}
+
+/* Цветовые стили для RR кнопок */
+.rr-btn.positive {
+    border-color: var(--green-primary, #10b981);
+    color: var(--green-primary, #10b981);
+}
+
+.rr-btn.positive:hover {
+    background: var(--green-primary, #10b981);
+    color: white;
+    border-color: var(--green-primary, #10b981);
+}
+
+.rr-btn.positive.selected {
+    background: var(--green-primary, #10b981);
+    color: white;
+    border-color: var(--green-primary, #10b981);
+}
+
+.rr-btn.negative {
+    border-color: var(--red-primary, #ef4444);
+    color: var(--red-primary, #ef4444);
+}
+/* Стили для области вставки изображений */
+.screenshot-paste-area {
+    width: 100%;
+    min-height: 120px;
+    border: 2px dashed var(--border-primary);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.screenshot-paste-area:hover {
+    border-color: var(--yellow-primary);
+    background: var(--bg-primary);
+}
+
+.screenshot-paste-area.dragover {
+    border-color: var(--green-primary);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.paste-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+    height: 120px;
+}
+
+.paste-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.paste-placeholder p {
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.paste-placeholder small {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.image-preview {
+    position: relative;
+    padding: 12px;
+    text-align: center;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: var(--red-primary);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Анимация при вставке */
+.image-preview {
+    animation: fadeInScale 0.3s ease;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.rr-btn.negative:hover {
+    background: var(--red-primary, #ef4444);
+    color: white;
+    border-color: var(--red-primary, #ef4444);
+}
+
+.rr-btn.negative.selected {
+    background: var(--red-primary, #ef4444);
+    color: white;
+    border-color: var(--red-primary, #ef4444);
+}
+
+/* Модальное окно скриншота */
+.screenshot-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    border: 1px solid var(--border-primary);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 10001;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+}
+
+.modal-trade-info {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.modal-trade-info .profit {
+    color: var(--green-primary);
+}
+
+.modal-trade-info .loss {
+    color: var(--red-primary);
+}
+
+.modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover {
+    background: var(--red-primary);
+    color: white;
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 20px;
+    text-align: center;
+    overflow: hidden;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal-screenshot {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    object-fit: contain;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-screenshot:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.zoom-controls {
+    margin-top: 16px;
+}
+
+.zoom-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    border: 1px solid var(--border-primary);
+}
+
+/* Анимация появления модального окна */
+.screenshot-modal {
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: scale(0.9) translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Блокировка скролла при открытом модальном окне */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Кнопки действий в таблице */
+.trade-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.view-screenshot-btn:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    border-color: var(--yellow-primary);
+    transform: scale(1.1);
+}
+
+.delete-btn:hover {
+    background: var(--red-primary);
+    color: white;
+    border-color: var(--red-primary);
+    transform: scale(1.1);
+}
+
+/* Улучшенное модальное окно скриншота */
+.screenshot-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: 12px;
+    width: 90vw;
+    max-width: 1200px;
+    height: 85vh;
+    max-height: 800px;
+    border: 1px solid var(--border-primary);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.modal-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+}
+
+.modal-screenshot {
+    max-width: 100%;
+    max-height: 100%;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    object-fit: contain;
+    user-select: none;
+}
+
+.modal-screenshot.zoomed {
+    cursor: grab;
+}
+
+.modal-screenshot.dragging {
+    cursor: grabbing;
+}
+
+/* Кнопки навигации */
+.nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid var(--yellow-primary);
+    border-radius: 50%;
+    color: var(--yellow-primary);
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 10002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+    background: var(--yellow-primary);
+    color: #000;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-btn.prev {
+    left: 20px;
+}
+
+.nav-btn.next {
+    right: 20px;
+}
+
+.nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn:disabled:hover {
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Информация о зуме и навигации */
+.modal-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 16px;
+    border-radius: 20px;
+    color: white;
+    font-size: 12px;
+    z-index: 10002;
+}
+
+.zoom-controls {
+    display: none; /* Скрываем старые контролы */
+}
+
+
+/* Стили для типов сделок в модальном окне */
+.modal-trade-info .trade-type-long {
+    color: var(--green-primary);
+    background: rgba(0, 200, 83, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 200, 83, 0.3);
+    font-weight: 700;
+}
+
+.modal-trade-info .trade-type-short {
+    color: var(--red-primary);
+    background: rgba(255, 23, 68, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 23, 68, 0.3);
+    font-weight: 700;
+}
+
+/* Исправление для модального окна - добавь в backtest.css */
+.modal-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+}
+
+.modal-screenshot {
+    max-width: 100%;
+    max-height: 100%;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    object-fit: contain;
+    user-select: none;
+    position: relative; /* Важно для правильного позиционирования */
+}
+
+.modal-screenshot.zoomed {
+    cursor: grab;
+    position: absolute; /* Абсолютное позиционирование только для увеличенного изображения */
+    left: 50%;
+    top: 50%;
+    transform-origin: center center;
 }
