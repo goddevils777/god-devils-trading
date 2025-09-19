@@ -27,7 +27,8 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -44,6 +45,14 @@ app.get('/api/health', (req, res) => {
 // Auth routes
 import authRoutes from './routes/auth.js';
 app.use('/api/auth', authRoutes);
+
+// Signals routes
+import signalsRoutes from './routes/signals.js';
+app.use('/api/signals', signalsRoutes);
+
+// Trades routes
+import tradesRoutes from './routes/trades.js';
+app.use('/api/trades', tradesRoutes);
 
 
 // Тестовый роут для отправки сигнала
@@ -69,9 +78,6 @@ app.get('/api/test-signal', (req, res) => {
 });
 
 
-// Signals routes
-import signalsRoutes from './routes/signals.js';
-app.use('/api/signals', signalsRoutes);
 
 // Роут для получения сигналов от TradingView (webhook)
 app.post('/api/signal', async (req, res) => {

@@ -42,11 +42,52 @@ class Database {
         )
     `;
 
+        const createTradesTable = `
+        CREATE TABLE IF NOT EXISTS trades (
+            id INTEGER PRIMARY KEY,
+            type TEXT NOT NULL CHECK(type IN ('long', 'short')),
+            currency TEXT NOT NULL,
+            date TEXT NOT NULL,
+            result REAL NOT NULL,
+            category TEXT,
+            screenshotData TEXT,
+            createdAt TEXT NOT NULL,
+            groupId INTEGER,
+            groupName TEXT
+        )
+    `;
+
+        const createPublicSharesTable = `
+        CREATE TABLE IF NOT EXISTS public_shares (
+            shareId TEXT PRIMARY KEY,
+            filters TEXT NOT NULL,
+            trades TEXT NOT NULL,
+            expiresAt TEXT NOT NULL,
+            createdAt TEXT NOT NULL
+        )
+    `;
+
         this.db.run(createSignalsTable, (err) => {
             if (err) {
                 console.error('❌ Error creating signals table:', err);
             } else {
                 console.log('✅ Signals table ready');
+            }
+        });
+
+        this.db.run(createTradesTable, (err) => {
+            if (err) {
+                console.error('❌ Error creating trades table:', err);
+            } else {
+                console.log('✅ Trades table ready');
+            }
+        });
+
+        this.db.run(createPublicSharesTable, (err) => {
+            if (err) {
+                console.error('❌ Error creating public_shares table:', err);
+            } else {
+                console.log('✅ Public shares table ready');
             }
         });
     }
@@ -67,7 +108,7 @@ class Database {
                 signal.signalNumber || 1,
                 signal.source || 'TradingView',
                 signal.status || 'new',
-               new Date().toISOString()
+                new Date().toISOString()
             ];
 
             this.db.run(query, values, function (err) {
@@ -145,6 +186,140 @@ class Database {
             });
         });
     }
+
+    saveTrade(trade) {
+        return new Promise((resolve, reject) => {
+            const query = `
+            INSERT INTO trades (
+                id, type, currency, date, result, category, 
+                screenshotData, createdAt, groupId, groupName
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+            const values = [
+                trade.id,
+                trade.type,
+                trade.currency,
+                trade.date,
+                trade.result,
+                trade.category || null,
+                trade.screenshotData || null,
+                trade.createdAt,
+                trade.groupId || null,
+                trade.groupName || null
+            ];
+
+            this.db.run(query, values, function (err) {
+                if (err) {
+                    console.error('❌ Error saving trade:', err);
+                    reject(err);
+                } else {
+                    console.log('✅ Trade saved to database:', trade.id);
+                    resolve(trade);
+                }
+            });
+        });
+    }
+
+    getTrades() {
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM trades ORDER BY createdAt DESC';
+
+            this.db.all(query, [], (err, rows) => {
+                if (err) {
+                    console.error('❌ Error getting trades:', err);
+                    reject(err);
+                } else {
+                    console.log(`📊 Retrieved ${rows.length} trades from database`);
+                    resolve(rows);
+                }
+            });
+        });
+    }
+
+    deleteTrade(tradeId) {
+        return new Promise((resolve, reject) => {
+            const query = 'DELETE FROM trades WHERE id = ?';
+
+            this.db.run(query, [tradeId], function (err) {
+                if (err) {
+                    console.error('❌ Error deleting trade:', err);
+                    reject(err);
+                } else {
+                    console.log('🗑️ Trade deleted from database:', tradeId);
+                    resolve({ deletedRows: this.changes });
+                }
+            });
+        });
+    }
+
+    savePublicShare(shareData) {
+        return new Promise((resolve, reject) => {
+            const query = `
+            INSERT INTO public_shares (shareId, filters, trades, expiresAt, createdAt)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+
+            const values = [
+                shareData.shareId,
+                JSON.stringify(shareData.filters),
+                JSON.stringify(shareData.trades),
+                shareData.expiresAt,
+                shareData.createdAt
+            ];
+
+            this.db.run(query, values, function (err) {
+                if (err) {
+                    console.error('❌ Error saving public share:', err);
+                    reject(err);
+                } else {
+                    console.log('✅ Public share saved:', shareData.shareId);
+                    resolve(shareData);
+                }
+            });
+        });
+    }
+
+    getPublicShare(shareId) {
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM public_shares WHERE shareId = ?';
+
+            this.db.get(query, [shareId], (err, row) => {
+                if (err) {
+                    console.error('❌ Error getting public share:', err);
+                    reject(err);
+                } else if (row) {
+                    // Парсим JSON данные обратно
+                    const shareData = {
+                        ...row,
+                        filters: JSON.parse(row.filters),
+                        trades: JSON.parse(row.trades)
+                    };
+                    resolve(shareData);
+                } else {
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    deletePublicShare(shareId) {
+        return new Promise((resolve, reject) => {
+            const query = 'DELETE FROM public_shares WHERE shareId = ?';
+
+            this.db.run(query, [shareId], function (err) {
+                if (err) {
+                    console.error('❌ Error deleting public share:', err);
+                    reject(err);
+                } else {
+                    console.log('🗑️ Public share deleted:', shareId);
+                    resolve({ deletedRows: this.changes });
+                }
+            });
+        });
+    }
 }
+
+
 
 export const database = new Database();

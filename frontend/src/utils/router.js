@@ -2,6 +2,7 @@ import { AuthModule } from '../modules/auth/auth.js';
 import { SignalsModule } from '../modules/signals/signals.js';
 import { DashboardModule } from '../modules/dashboard/dashboard.js';
 import { BacktestModule } from '../modules/backtest/backtest.js';
+import { ShareModule } from '../modules/share/share.js';
 
 export class AppRouter {
     constructor() {
@@ -10,7 +11,8 @@ export class AppRouter {
             '/login': 'auth',
             '/dashboard': 'dashboard',
             '/signals': 'signals',
-            '/backtest': 'backtest'
+            '/backtest': 'backtest',
+            '/share': 'share'
         };
         this.currentRoute = '/';
         this.isAuthenticated = localStorage.getItem('token') !== null;
@@ -18,6 +20,7 @@ export class AppRouter {
         this.signalsModule = new SignalsModule();
         this.dashboardModule = new DashboardModule();
         this.backtestModule = new BacktestModule();
+        this.shareModule = new ShareModule();
     }
 
     init() {
@@ -28,13 +31,28 @@ export class AppRouter {
 
     handleRouteChange() {
         const path = window.location.pathname;
-        this.currentRoute = path;
+
+        // Обрабатываем динамические роуты /share/id
+        if (path.startsWith('/share/')) {
+            this.currentRoute = '/share';
+        } else {
+            this.currentRoute = path;
+        }
+
         this.render();
     }
 
     async render() {
         const app = document.getElementById('app');
 
+        // Публичные ссылки НЕ требуют авторизации
+        if (this.currentRoute === '/share') {
+            const shareId = window.location.pathname.split('/')[2];
+            app.innerHTML = await this.shareModule.render(shareId);
+            return;
+        }
+
+        // Для всех остальных роутов проверяем авторизацию
         if (!this.isAuthenticated && this.currentRoute !== '/' && this.currentRoute !== '/login') {
             this.navigate('/');
             return;
@@ -60,7 +78,7 @@ export class AppRouter {
                 setTimeout(() => this.signalsModule.bindEvents(), 0);
                 break;
             case '/backtest':
-                app.innerHTML = this.renderBacktestPage();
+                app.innerHTML = await this.renderBacktestPage();
                 setTimeout(() => this.backtestModule.bindEvents(), 0);
                 break;
             default:
@@ -108,23 +126,25 @@ export class AppRouter {
         `;
     }
 
-    renderBacktestPage() {
+    async renderBacktestPage() {
+        const backtestContent = await this.backtestModule.render();
+
         return `
-            <div class="dashboard">
-                <nav class="sidebar">
-                    <div class="logo">😇 God & Devils 😈</div>
-                    <ul class="nav-menu">
-                        <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
-                        <li><a href="/signals" class="nav-link">Сигналы</a></li>
-                        <li><a href="/backtest" class="nav-link active">Backtest</a></li>
-                        <li><button class="logout-btn">Выйти</button></li>
-                    </ul>
-                </nav>
-                <main class="main-content">
-                    ${this.backtestModule.render()}
-                </main>
-            </div>
-        `;
+        <div class="dashboard">
+            <nav class="sidebar">
+                <div class="logo">😇 God & Devils 😈</div>
+                <ul class="nav-menu">
+                    <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
+                    <li><a href="/signals" class="nav-link">Сигналы</a></li>
+                    <li><a href="/backtest" class="nav-link active">Backtest</a></li>
+                    <li><button class="logout-btn">Выйти</button></li>
+                </ul>
+            </nav>
+            <main class="main-content">
+                ${backtestContent}
+            </main>
+        </div>
+    `;
     }
 
     render404() {

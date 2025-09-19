@@ -4,43 +4,86 @@ import { initCustomCalendars } from '../../utils/CustomCalendar.js';
 
 export class BacktestModule {
     constructor() {
-        this.trades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
+        this.trades = [];
         this.currencies = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'EURGBP', 'EURJPY'];
         this.rrValues = JSON.parse(localStorage.getItem('customRrValues')) || ['-1', '-0.8', '0', '1.5', '2'];
-        this.currentFilter = { currency: 'all', result: 'all', category: 'all', group: 'all', dateFrom: '', dateTo: '' };
+        this.currentFilter = {
+            currency: 'all',
+            result: 'all',
+            category: 'all',
+            group: 'all',
+            period: 'all',  // ДОБАВЬ ЭТУ СТРОКУ
+            dateFrom: '',
+            dateTo: ''
+        };
         this.randomMode = JSON.parse(localStorage.getItem('randomModeState')) || false;
-        this.collapsedGroups = new Set(JSON.parse(localStorage.getItem('collapsedGroups')) || []); // Добавить эту строку
+        this.collapsedGroups = new Set(JSON.parse(localStorage.getItem('collapsedGroups')) || []);
+
+        // Загружаем сделки при инициализации
+        this.loadTrades();
     }
 
-    render() {
+    async loadTrades() {
+        try {
+            console.log('📥 Загружаем сделки из базы данных...');
+
+            const response = await fetch('http://localhost:8080/api/trades');
+            if (response.ok) {
+                const dbTrades = await response.json();
+                console.log(`📊 Получено ${dbTrades.length} сделок из базы`);
+
+                const tradesWithScreenshots = dbTrades.filter(t => t.screenshotData);
+                console.log(`📸 Сделок со скриншотами: ${tradesWithScreenshots.length}`);
+
+                this.trades = dbTrades;
+                // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+
+            } else {
+                console.log('⚠️ Не удалось загрузить из базы, используем localStorage');
+                this.trades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
+                // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+            }
+
+            console.log(`✅ Загружено ${this.trades.length} сделок`);
+        } catch (error) {
+            console.error('❌ Ошибка загрузки сделок:', error);
+            this.trades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
+            // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+        }
+    }
+
+    async render() {
+        // Ждем загрузки сделок перед рендером
+        await this.loadTrades();
+
         return `
-            <div class="backtest-container">
-                <div class="backtest-header">
-                    <h2>📊 Backtest Journal</h2>
-                    <div class="header-actions">
-                        <button class="clear-all-btn" id="clearAllBtn">Очистить журнал</button>
-                        <button class="group-trades-btn" id="groupTradesBtn">Сгруппировать</button>
-                        <button class="add-trade-btn" id="addTradeBtn">+ Добавить сделку</button>
-                    </div>
-                </div>
-                
-                <div class="trade-form-container" id="tradeFormContainer" style="display: none;">
-                    ${this.renderTradeForm()}
-                </div>
-                
-                <div class="filters-container">
-                    ${this.renderFilters()}
-                </div>
-                
-                <div class="trades-stats">
-                    ${this.renderStats()}
-                </div>
-                
-                <div class="trades-list">
-                    ${this.renderTradesList()}
+        <div class="backtest-container">
+            <div class="backtest-header">
+                <h2>📊 Backtest Journal</h2>
+                <div class="header-actions">
+                    <button class="clear-all-btn" id="clearAllBtn">Очистить журнал</button>
+                    <button class="group-trades-btn" id="groupTradesBtn">Сгруппировать</button>
+                    <button class="add-trade-btn" id="addTradeBtn">+ Добавить сделку</button>
                 </div>
             </div>
-        `;
+            
+            <div class="trade-form-container" id="tradeFormContainer" style="display: none;">
+                ${this.renderTradeForm()}
+            </div>
+            
+            <div class="filters-container">
+                ${this.renderFilters()}
+            </div>
+            
+            <div class="trades-stats">
+                ${this.renderStats()}
+            </div>
+            
+            <div class="trades-list">
+                ${this.renderTradesList()}
+            </div>
+        </div>
+    `;
     }
 
     // Обновить метод renderTradeForm для установки состояния:
@@ -97,7 +140,7 @@ export class BacktestModule {
                 <div class="screenshot-paste-area" id="screenshotPasteArea">
                     <div class="paste-placeholder">
                         <span class="paste-icon">📷</span>
-                        <p>Нажми Ctrl+V чтобы вставить скриншот из буфера обмена</p>
+                        <p>Нажми ⌘+V чтобы вставить скриншот из буфера обмена</p>
                         <small>Поддерживаются форматы: PNG, JPG, GIF</small>
                     </div>
                     <div class="image-preview" id="imagePreview" style="display: none;">
@@ -165,44 +208,95 @@ export class BacktestModule {
 
     renderFilters() {
         const groups = [...new Set(this.trades.filter(t => t.groupName).map(t => t.groupName))];
+        const months = this.getMonthsFromTrades();
 
         return `
-        <div class="filters">
-            <div class="filter-group">
-                <label>Валюта:</label>
-                <select id="currencyFilter">
-                    <option value="all">Все</option>
-                    ${this.currencies.map(cur => `<option value="${cur}">${cur}</option>`).join('')}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Результат:</label>
-                <select id="resultFilter">
-                    <option value="all">Все</option>
-                    <option value="profit">Прибыль</option>
-                    <option value="loss">Убыток</option>
-                    <option value="breakeven">В ноль</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Группа:</label>
-                <select id="groupFilter">
-                    <option value="all">Все</option>
-                    <option value="ungrouped">Без группы</option>
-                    ${groups.map(group => `<option value="${group}">${group}</option>`).join('')}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>От:</label>
-                <input type="date" id="dateFromFilter">
-            </div>
-            <div class="filter-group">
-                <label>До:</label>
-                <input type="date" id="dateToFilter">
-            </div>
-            <button id="clearFiltersBtn">Очистить фильтры</button>
+    <div class="filters">
+        <div class="filter-group">
+            <label>Валюта:</label>
+            <select id="currencyFilter">
+                <option value="all">Все</option>
+                ${this.currencies.map(cur => `<option value="${cur}">${cur}</option>`).join('')}
+            </select>
         </div>
-        `;
+        <div class="filter-group">
+            <label>Результат:</label>
+            <select id="resultFilter">
+                <option value="all">Все</option>
+                <option value="profit">Прибыль</option>
+                <option value="loss">Убыток</option>
+                <option value="breakeven">В ноль</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Группа:</label>
+            <select id="groupFilter">
+                <option value="all">Все</option>
+                <option value="ungrouped">Без группы</option>
+                ${groups.map(group => `<option value="${group}">${group}</option>`).join('')}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Период:</label>
+            <select id="periodFilter">
+                <option value="all">Все время</option>
+                <option value="today">Сегодня</option>
+                <option value="yesterday">Вчера</option>
+                <option value="3days">3 дня</option>
+                <option value="7days">7 дней</option>
+                ${months.map(month => `<option value="${month.value}">${month.label}</option>`).join('')}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>От:</label>
+            <input type="date" id="dateFromFilter">
+        </div>
+        <div class="filter-group">
+            <label>До:</label>
+            <input type="date" id="dateToFilter">
+        </div>
+        <div class="filter-actions">
+            <button id="clearFiltersBtn">Очистить фильтры</button>
+            <button class="share-btn" id="shareFiltersBtn">📋</button>
+        </div>
+    </div>
+    `;
+    }
+
+    getMonthsFromTrades() {
+        const monthCounts = {};
+        const monthNames = [
+            'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+        ];
+
+        // Подсчитываем сделки по месяцам
+        this.trades.forEach(trade => {
+            const date = new Date(trade.date);
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const monthKey = `${year}-${month}`;
+
+            if (!monthCounts[monthKey]) {
+                monthCounts[monthKey] = {
+                    year,
+                    month,
+                    count: 0
+                };
+            }
+            monthCounts[monthKey].count++;
+        });
+
+        // Преобразуем в массив и сортируем по дате (новые сверху)
+        return Object.values(monthCounts)
+            .sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            })
+            .map(item => ({
+                value: `${item.year}-${item.month}`,
+                label: `${monthNames[item.month]} ${item.year} (${item.count})`
+            }));
     }
 
     renderStats() {
@@ -349,7 +443,7 @@ export class BacktestModule {
                             return '';
                         }
                     })()}
-                    <button class="action-btn delete-btn" data-trade-id="${trade.id}" title="Удалить сделку">
+                    <button class="action-btn delete-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="Удалить сделку">
                         🗑️
                     </button>
                 </div>
@@ -361,6 +455,74 @@ export class BacktestModule {
         }).join('')}
     </div>
     `;
+    }
+
+    // Добавь эти методы в класс Database
+
+    async saveTrade(trade) {
+        const query = `
+        INSERT INTO trades (
+            id, type, currency, date, result, category, 
+            screenshotData, createdAt, groupId, groupName
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+        try {
+            const stmt = this.db.prepare(query);
+            stmt.run(
+                trade.id,
+                trade.type,
+                trade.currency,
+                trade.date,
+                trade.result,
+                trade.category || null,
+                trade.screenshotData || null,
+                trade.createdAt,
+                trade.groupId || null,
+                trade.groupName || null
+            );
+
+            console.log('✅ Trade saved to database:', trade.id);
+            return trade;
+        } catch (error) {
+            console.error('❌ Error saving trade:', error);
+            throw error;
+        }
+    }
+
+    async getTrades() {
+        const query = 'SELECT * FROM trades ORDER BY createdAt DESC';
+        try {
+            const trades = this.db.prepare(query).all();
+            console.log(`📊 Retrieved ${trades.length} trades from database`);
+            return trades;
+        } catch (error) {
+            console.error('❌ Error getting trades:', error);
+            throw error;
+        }
+    }
+
+    async deleteTrade(tradeId) {
+        try {
+            // ИСПРАВЛЕННЫЙ URL - добавь правильный хост
+            const response = await fetch(`http://localhost:8080/api/trades/${tradeId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                console.log('✅ Сделка удалена из базы данных:', tradeId);
+            } else {
+                console.error('❌ Ошибка удаления из базы:', tradeId);
+            }
+        } catch (error) {
+            console.error('❌ Ошибка при удалении из базы:', error);
+        }
+
+        // Удаляем из локального массива
+        this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
+        this.saveTrades();
+        this.updateDisplay();
+        notifications.success('Сделка удалена');
     }
 
     calculateStreaks(trades) {
@@ -425,20 +587,60 @@ export class BacktestModule {
                 if (this.currentFilter.group !== 'ungrouped' && trade.groupName !== this.currentFilter.group) return false;
             }
 
+            // Фильтр по периодам
+            if (this.currentFilter.period && this.currentFilter.period !== 'all') {
+                const tradeDate = new Date(trade.date);
+                const today = new Date();
+
+                switch (this.currentFilter.period) {
+                    case 'today':
+                        if (tradeDate.toDateString() !== today.toDateString()) return false;
+                        break;
+                    case 'yesterday':
+                        const yesterday = new Date(today);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        if (tradeDate.toDateString() !== yesterday.toDateString()) return false;
+                        break;
+                    case '3days':
+                        const threeDaysAgo = new Date(today);
+                        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                        if (tradeDate < threeDaysAgo) return false;
+                        break;
+                    case '7days':
+                        const sevenDaysAgo = new Date(today);
+                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                        if (tradeDate < sevenDaysAgo) return false;
+                        break;
+                    default:
+                        // Проверяем на месячные фильтры (формат "2024-0")
+                        if (this.currentFilter.period.includes('-')) {
+                            const [year, month] = this.currentFilter.period.split('-').map(Number);
+                            if (tradeDate.getFullYear() !== year || tradeDate.getMonth() !== month) return false;
+                        }
+                }
+            }
+
             if (this.currentFilter.dateFrom && trade.date < this.currentFilter.dateFrom) return false;
             if (this.currentFilter.dateTo && trade.date > this.currentFilter.dateTo) return false;
 
             return true;
         }).sort((a, b) => {
-            // Сначала сортируем по группам
+            // Сначала по времени создания - новые сделки всегда вверху
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
+
+            // Если одна сделка намного новее другой (разница больше часа), приоритет времени
+            const timeDiff = Math.abs(timeA - timeB);
+            if (timeDiff > 3600000) { // 1 час в миллисекундах
+                return timeB - timeA; // Новые сверху
+            }
+
+            // Для сделок созданных примерно в одно время сортируем по группам
             if (a.groupName && !b.groupName) return -1;
             if (!a.groupName && b.groupName) return 1;
             if (a.groupName !== b.groupName) return (a.groupName || '').localeCompare(b.groupName || '');
 
-            // Внутри группы сортируем по времени создания: НОВЫЕ ВВЕРХУ
-            // Если есть createdAt - используем его, иначе используем дату сделки
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
+            // Внутри группы по времени создания: новые вверху
             return timeB - timeA;
         });
     }
@@ -449,14 +651,64 @@ export class BacktestModule {
 
     saveTrades() {
         console.log('💾 saveTrades() вызван');
-        console.log('📝 Сохраняю trades:', this.trades);
-        localStorage.setItem('backtestTrades', JSON.stringify(this.trades));
-        console.log('✅ Данные сохранены в localStorage');
+
+        try {
+            // Сохраняем только последние 50 сделок в localStorage (без скриншотов)
+            const tradesForLocal = this.trades.slice(0, 50).map(trade => ({
+                ...trade,
+                screenshotData: null // Убираем скриншоты из localStorage
+            }));
+
+            localStorage.setItem('backtestTrades', JSON.stringify(tradesForLocal));
+            console.log('✅ Данные сохранены в localStorage (без скриншотов)');
+        } catch (error) {
+            console.warn('⚠️ localStorage переполнен, пропускаем локальное сохранение');
+        }
+
+        // Синхронизируем с базой данных (со скриншотами)
+        this.syncToDatabase();
+    }
+
+    async syncToDatabase() {
+        try {
+            console.log('🔄 Синхронизация с базой данных...');
+
+            // Получаем список существующих сделок ОДИН раз
+            const checkResponse = await fetch('http://localhost:8080/api/trades');
+            let existingTrades = [];
+
+            if (checkResponse.ok) {
+                existingTrades = await checkResponse.json();
+            }
+
+            const existingIds = new Set(existingTrades.map(t => t.id));
+
+            // Синхронизируем только новые сделки СО СКРИНШОТАМИ
+            for (const trade of this.trades) {
+                if (!existingIds.has(trade.id)) {
+                    const response = await fetch('http://localhost:8080/api/trades', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(trade) // Передаем полную сделку со скриншотом
+                    });
+
+                    if (response.ok) {
+                        console.log('✅ Сделка синхронизирована:', trade.id);
+                    } else {
+                        const errorText = await response.text();
+                        console.error('❌ Ошибка синхронизации сделки:', trade.id, errorText);
+                    }
+                }
+            }
+
+            console.log('✅ Синхронизация завершена');
+        } catch (error) {
+            console.error('❌ Ошибка синхронизации с базой:', error);
+        }
     }
 
     async addTrade(tradeData) {
         console.log('🔄 addTrade вызван с данными:', tradeData);
-        console.log('📸 screenshotData в tradeData:', tradeData.screenshotData);
 
         const trade = {
             id: Date.now(),
@@ -465,12 +717,9 @@ export class BacktestModule {
             date: tradeData.date,
             result: tradeData.result,
             category: tradeData.category,
-            screenshotData: tradeData.screenshotData || null, // Сохраняем данные скриншота
+            screenshotData: tradeData.screenshotData || null,
             createdAt: new Date().toISOString()
         };
-
-        console.log('💾 Создан объект сделки:', trade);
-        console.log('📸 screenshotData в сделке:', trade.screenshotData ? 'Есть' : 'Отсутствует');
 
         if (tradeData.category) {
             const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
@@ -484,12 +733,13 @@ export class BacktestModule {
         if (tradeData.category) {
             localStorage.setItem('lastSelectedGroup', tradeData.category);
         }
-
         if (tradeData.currency) {
             localStorage.setItem('lastSelectedCurrency', tradeData.currency);
         }
 
-        this.trades.push(trade);
+        // ИСПРАВЛЕНИЕ: Добавляем в НАЧАЛО массива, а не в конец
+        this.trades.unshift(trade);
+
         this.saveTrades();
         this.updateDisplay();
 
@@ -534,56 +784,11 @@ export class BacktestModule {
     }
 
 
-    // Методы для работы со скриншотами
-    setScreenshotPreview(base64Data) {
-        const placeholder = document.querySelector('.paste-placeholder');
-        const preview = document.getElementById('imagePreview');
-        const previewImg = document.getElementById('previewImage');
-        const hiddenInput = document.getElementById('screenshotData');
-
-        if (placeholder && preview && previewImg && hiddenInput) {
-            // Скрываем placeholder и показываем превью
-            placeholder.style.display = 'none';
-            preview.style.display = 'block';
-
-            // Устанавливаем изображение
-            previewImg.src = base64Data;
-
-            // Сохраняем данные в скрытое поле
-            hiddenInput.value = base64Data;
-
-            console.log('📸 Скриншот установлен в превью');
-        }
-    }
-
-    clearScreenshot() {
-        const placeholder = document.querySelector('.paste-placeholder');
-        const preview = document.getElementById('imagePreview');
-        const previewImg = document.getElementById('previewImage');
-        const hiddenInput = document.getElementById('screenshotData');
-
-        if (placeholder && preview && previewImg && hiddenInput) {
-            // Показываем placeholder и скрываем превью
-            placeholder.style.display = 'flex';
-            preview.style.display = 'none';
-
-            // Очищаем данные
-            previewImg.src = '';
-            hiddenInput.value = '';
-
-            console.log('📸 Скриншот удален');
-            notifications.info('Скриншот удален');
-        }
-    }
 
 
 
-    deleteTrade(tradeId) {
-        this.trades = this.trades.filter(t => t.id !== parseInt(tradeId));
-        this.saveTrades();
-        this.updateDisplay();
-        notifications.success('Сделка удалена');
-    }
+
+
 
     updateDisplay() {
         document.querySelector('.trades-stats').innerHTML = this.renderStats();
@@ -709,7 +914,7 @@ export class BacktestModule {
         return [...new Set(this.trades.filter(t => t.groupName).map(t => t.groupName))];
     }
 
-    clearAllTrades() {
+    async clearAllTrades() {
         const filteredTrades = this.getFilteredTrades();
 
         if (filteredTrades.length === 0) {
@@ -717,10 +922,22 @@ export class BacktestModule {
             return;
         }
 
+        // ДОБАВЛЯЕМ: Удаляем из базы данных
+        try {
+            for (const trade of filteredTrades) {
+                await fetch(`http://localhost:8080/api/trades/${trade.id}`, {
+                    method: 'DELETE'
+                });
+            }
+            console.log('✅ Сделки удалены из базы данных');
+        } catch (error) {
+            console.error('❌ Ошибка удаления из базы:', error);
+        }
+
         // Получаем ID отфильтрованных сделок
         const filteredTradeIds = new Set(filteredTrades.map(t => t.id));
 
-        // Удаляем только отфильтрованные сделки
+        // Удаляем только отфильтрованные сделки из локального массива
         const originalCount = this.trades.length;
         this.trades = this.trades.filter(trade => !filteredTradeIds.has(trade.id));
         const deletedCount = originalCount - this.trades.length;
@@ -793,7 +1010,8 @@ export class BacktestModule {
     }
 
     // Методы для работы со скриншотами
-    аsetScreenshotPreview(base64Data) {
+    // Методы для работы со скриншотами
+    setScreenshotPreview(base64Data) {
         const placeholder = document.querySelector('.paste-placeholder');
         const preview = document.getElementById('imagePreview');
         const previewImg = document.getElementById('previewImage');
@@ -830,7 +1048,6 @@ export class BacktestModule {
             hiddenInput.value = '';
 
             console.log('📸 Скриншот удален');
-            notifications.info('Скриншот удален');
         }
     }
 
@@ -1092,22 +1309,22 @@ export class BacktestModule {
         modal.id = 'screenshotModal';
         modal.className = 'screenshot-modal';
         modal.innerHTML = `
-            <div class="modal-backdrop"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <div class="modal-trade-info"></div>
-                    <button class="modal-close-btn">×</button>
-                </div>
-                <div class="modal-body">
-                    <button class="nav-btn prev" id="prevTradeBtn">←</button>
-                    <img class="modal-screenshot" src="" alt="Screenshot">
-                    <button class="nav-btn next" id="nextTradeBtn">→</button>
-                    <div class="modal-controls">
-                        <span id="modalZoomInfo">Клик для увеличения • ← → навигация</span>
-                    </div>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-trade-info"></div>
+                <button class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <button class="nav-btn prev" id="prevTradeBtn">←</button>
+                <img class="modal-screenshot" src="" alt="Screenshot">
+                <button class="nav-btn next" id="nextTradeBtn">→</button>
+                <div class="modal-controls">
+                    <span id="modalZoomInfo">Клик для увеличения • ← → навигация</span>
                 </div>
             </div>
-        `;
+        </div>
+    `;
 
         document.body.appendChild(modal);
 
@@ -1119,11 +1336,13 @@ export class BacktestModule {
         const nextBtn = modal.querySelector('#nextTradeBtn');
         const zoomInfo = modal.querySelector('#modalZoomInfo');
 
-        // Переменные для drag & drop
-        let isDragging = false;
-        let dragStartX, dragStartY, imgStartX, imgStartY;
-        let currentTradeIndex = 0;
-        let tradesWithScreenshots = [];
+        // Переменные для drag & drop как свойства класса
+        this.hasMoved = false;
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.imgStartX = 0;
+        this.imgStartY = 0;
 
         // Закрытие модального окна
         const closeModal = () => {
@@ -1137,6 +1356,7 @@ export class BacktestModule {
 
         // Клик на изображение - увеличение к точке клика
         img.addEventListener('click', (e) => {
+            if (this.hasMoved) return;  // НЕ ЗУМИМ ЕСЛИ БЫЛО ДВИЖЕНИЕ
             e.stopPropagation();
             this.zoomToPoint(img, e, zoomInfo);
         });
@@ -1145,14 +1365,15 @@ export class BacktestModule {
         img.addEventListener('mousedown', (e) => {
             const zoomLevel = parseInt(img.dataset.zoomLevel || '1');
             if (zoomLevel > 1) {
-                isDragging = true;
+                this.isDragging = true;
+                this.hasMoved = false;  // СБРАСЫВАЕМ ФЛАГ
                 img.classList.add('dragging');
 
                 // Сохраняем начальные позиции мыши и изображения
-                dragStartX = e.clientX;
-                dragStartY = e.clientY;
-                imgStartX = parseInt(img.style.left) || 0;
-                imgStartY = parseInt(img.style.top) || 0;
+                this.dragStartX = e.clientX;
+                this.dragStartY = e.clientY;
+                this.imgStartX = parseInt(img.style.left) || 0;
+                this.imgStartY = parseInt(img.style.top) || 0;
 
                 e.preventDefault();
                 e.stopPropagation();
@@ -1160,14 +1381,16 @@ export class BacktestModule {
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
+            if (!this.isDragging) return;
+
+            this.hasMoved = true; // ОТМЕЧАЕМ ЧТО БЫЛО ДВИЖЕНИЕ
             e.preventDefault();
 
             // Простое перемещение без сложных вычислений границ
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-            const newX = imgStartX + deltaX;
-            const newY = imgStartY + deltaY;
+            const deltaX = e.clientX - this.dragStartX;
+            const deltaY = e.clientY - this.dragStartY;
+            const newX = this.imgStartX + deltaX;
+            const newY = this.imgStartY + deltaY;
 
             // Применяем новые позиции
             img.style.left = newX + 'px';
@@ -1175,8 +1398,8 @@ export class BacktestModule {
         });
 
         document.addEventListener('mouseup', (e) => {
-            if (isDragging) {
-                isDragging = false;
+            if (this.isDragging) {
+                this.isDragging = false;
                 img.classList.remove('dragging');
                 e.stopPropagation();
             }
@@ -1232,7 +1455,8 @@ export class BacktestModule {
             this.resetImageTransform(img);
         } else {
             img.classList.add('zoomed');
-            img.style.transform = `scale(${newZoom}) translate(-50%, -50%)`;
+            img.style.transform = `scale(${newZoom})`;
+            img.style.transformOrigin = 'center center';
             img.dataset.zoomLevel = newZoom;
         }
 
@@ -1242,7 +1466,7 @@ export class BacktestModule {
             const zoomText = newZoom === 1 ? 'Клик для увеличения' : `${newZoom}x • Зажми и тяни`;
             zoomInfo.textContent = `${position} • ${zoomText} • ← → навигация`;
         }
-    }
+    } Я
 
     // Вспомогательные методы для модального окна
     updateTradesWithScreenshots(currentTradeId) {
@@ -1297,53 +1521,33 @@ export class BacktestModule {
 
         // Загружаем новое изображение
         this.modalImg.src = trade.screenshotData;
+        this.modalImg.dataset.zoomLevel = '1';
+
+        // ДОБАВЬ ЭТУ СТРОКУ
+        this.isDragging = false;
+        this.hasMoved = false;
 
         // Обновляем информацию о сделке
         const tradeInfo = this.modal.querySelector('.modal-trade-info');
 
-        // В методе loadTradeInModal() замени блок обновления информации:
         if (tradeInfo) {
             const typeIcon = trade.type === 'long' ? '😇' : '😈';
             const typeText = trade.type === 'long' ? 'LONG' : 'SHORT';
             const typeClass = trade.type === 'long' ? 'trade-type-long' : 'trade-type-short';
             const resultText = trade.result > 0 ? `+${trade.result}` : trade.result;
             tradeInfo.innerHTML = `
-                <span class="${typeClass}">${typeIcon} ${typeText}</span> 
-                <strong>${trade.currency}</strong> • 
-                <span class="${trade.result > 0 ? 'profit' : 'loss'}">${resultText}</span> • 
-                ${this.formatDate(trade.date)}
-            `;
+            <span class="${typeClass}">${typeIcon} ${typeText}</span> 
+            <strong>${trade.currency}</strong> • 
+            <span class="${trade.result > 0 ? 'profit' : 'loss'}">${resultText}</span> • 
+            ${this.formatDate(trade.date)}
+        `;
         }
 
         // Обновляем навигацию
         this.updateNavigationButtons();
     }
 
-    zoomScreenshot(img, zoomInfo) {
-        let currentZoom = parseInt(img.dataset.zoomLevel || '1');
 
-        // Циклический зум: 1x -> 2x -> 3x -> 1x
-        currentZoom = currentZoom >= 3 ? 1 : currentZoom + 1;
-
-        if (currentZoom === 1) {
-            this.resetImageTransform(img);
-        } else {
-            img.style.transform = `scale(${currentZoom})`;
-            img.style.position = 'relative';
-            img.style.left = '0px';
-            img.style.top = '0px';
-            img.classList.add('zoomed');
-        }
-
-        img.dataset.zoomLevel = currentZoom;
-
-        // Обновляем информацию о зуме
-        if (zoomInfo) {
-            const position = `${this.currentTradeIndex + 1} / ${this.tradesWithScreenshots.length}`;
-            const zoomText = currentZoom === 1 ? 'Клик для увеличения' : `${currentZoom}x • Зажми и тяни`;
-            zoomInfo.textContent = `${position} • ${zoomText} • ← → навигация`;
-        }
-    }
 
     resetImageTransform(img) {
         img.style.transform = 'scale(1)';
@@ -1369,6 +1573,45 @@ export class BacktestModule {
 
         console.log('🔍 Зум изображения:', currentZoom + 'x');
     }
+
+    async createPublicShareLink() {
+        try {
+            const filteredTrades = this.getFilteredTrades();
+
+            if (filteredTrades.length === 0) {
+                notifications.warning('Нет сделок для публичного доступа');
+                return;
+            }
+
+            const shareData = {
+                filters: this.currentFilter,
+                trades: filteredTrades,
+                expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
+            };
+
+            // ИСПРАВЛЕННЫЙ URL
+            const response = await fetch('http://localhost:8080/api/trades/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(shareData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                const shareUrl = `${window.location.origin}/share/${result.shareId}`;
+
+                await navigator.clipboard.writeText(shareUrl);
+                notifications.success(`Ссылка скопирована! Действует 3 месяца (${filteredTrades.length} сделок)`);
+            } else {
+                notifications.error('Ошибка создания публичной ссылки');
+            }
+        } catch (error) {
+            console.error('Ошибка создания ссылки:', error);
+            notifications.error('Ошибка создания ссылки');
+        }
+    }
+
+
     bindEvents() {
         console.log('🎯 bindEvents() вызван');
         const self = this;
@@ -1385,6 +1628,7 @@ export class BacktestModule {
                 }
             });
         }, 100);
+
 
         // Обработчик просмотра скриншота
         document.addEventListener('click', (e) => {
@@ -1467,17 +1711,16 @@ export class BacktestModule {
             }
         });
 
-        // Сохранение последней выбранной валюты при изменении
         document.addEventListener('change', (e) => {
+            if (e.target.name === 'date') {
+                this.updateDateLabel(e.target.value);
+            }
+
             if (e.target.name === 'currency') {
                 localStorage.setItem('lastSelectedCurrency', e.target.value);
             }
-        });
 
-        // Сохранение последней выбранной группы при изменении - ИСПРАВЛЕНО
-        document.addEventListener('change', (e) => {
             if (e.target.name === 'category') {
-                // Сохраняем ЛЮБОЕ значение, даже пустое (для "Без группы")
                 localStorage.setItem('lastSelectedGroup', e.target.value);
                 console.log('Сохранена группа:', e.target.value || 'Без группы');
             }
@@ -1577,8 +1820,6 @@ export class BacktestModule {
                 document.querySelector('input[name="result"]').value = '';
                 document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
 
-                // Очищаем скриншот
-                this.clearScreenshot();
 
             } catch (error) {
                 console.error('❌ Ошибка при добавлении сделки:', error);
@@ -1613,15 +1854,77 @@ export class BacktestModule {
         });
 
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-            this.currentFilter = { currency: 'all', result: 'all', dateFrom: '', dateTo: '' };
+            this.currentFilter = {
+                currency: 'all',
+                result: 'all',
+                period: 'all',  // ДОБАВЬ ЭТУ СТРОКУ
+                dateFrom: '',
+                dateTo: ''
+            };
             document.getElementById('currencyFilter').value = 'all';
             document.getElementById('resultFilter').value = 'all';
+            document.getElementById('periodFilter').value = 'all';  // ДОБАВЬ ЭТУ СТРОКУ
             document.getElementById('dateFromFilter').value = '';
             document.getElementById('dateToFilter').value = '';
             this.updateDisplay();
         });
 
-        // Клик на дату для подстановки в форму
+        // Публичная ссылка на отфильтрованные сделки
+        document.getElementById('shareFiltersBtn').addEventListener('click', async () => {
+            await this.createPublicShareLink();
+        });
+
+        document.getElementById('periodFilter').addEventListener('change', (e) => {
+            this.currentFilter.period = e.target.value;
+
+            // Автоматически заполняем поля дат
+            const today = new Date();
+            const dateFromInput = document.getElementById('dateFromFilter');
+            const dateToInput = document.getElementById('dateToFilter');
+
+            switch (e.target.value) {
+                case 'today':
+                    const todayStr = today.toISOString().split('T')[0];
+                    dateFromInput.value = todayStr;
+                    dateToInput.value = todayStr;
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    dateFromInput.value = yesterdayStr;
+                    dateToInput.value = yesterdayStr;
+                    break;
+                case '3days':
+                    const threeDaysAgo = new Date(today);
+                    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                    dateFromInput.value = threeDaysAgo.toISOString().split('T')[0];
+                    dateToInput.value = today.toISOString().split('T')[0];
+                    break;
+                case '7days':
+                    const sevenDaysAgo = new Date(today);
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    dateFromInput.value = sevenDaysAgo.toISOString().split('T')[0];
+                    dateToInput.value = today.toISOString().split('T')[0];
+                    break;
+                default:
+                    // Для месячных фильтров
+                    if (e.target.value.includes('-')) {
+                        const [year, month] = e.target.value.split('-').map(Number);
+                        const monthStart = new Date(year, month, 1);
+                        const monthEnd = new Date(year, month + 1, 0);
+                        dateFromInput.value = monthStart.toISOString().split('T')[0];
+                        dateToInput.value = monthEnd.toISOString().split('T')[0];
+                    } else if (e.target.value === 'all') {
+                        dateFromInput.value = '';
+                        dateToInput.value = '';
+                    }
+            }
+
+            this.updateDisplay();
+        });
+
+        // В bindEvents() замени обработчик клика на дату:
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('trade-date')) {
                 const date = e.target.dataset.date;
@@ -1633,8 +1936,18 @@ export class BacktestModule {
                 }
 
                 // Подставляем дату
-                document.querySelector('input[name="date"]').value = date;
-                notifications.info(`Дата ${this.formatDate(date)} подставлена в форму`);
+                const dateInput = document.querySelector('input[name="date"]');
+                dateInput.value = date;
+
+                // ИСПРАВЛЯЕМ: Обновляем день недели
+                this.updateDateLabel(date);
+
+                // ДОБАВЛЯЕМ: Копируем дату в буфер обмена
+                navigator.clipboard.writeText(date).then(() => {
+                    notifications.success(`Дата ${this.formatDate(date)} подставлена в форму и скопирована: ${date}`);
+                }).catch(() => {
+                    notifications.info(`Дата ${this.formatDate(date)} подставлена в форму`);
+                });
             }
         });
 
@@ -1646,6 +1959,7 @@ export class BacktestModule {
             }
         });
 
+        // Обновить существующий обработчик удаления сделок
         // Обновить существующий обработчик удаления сделок
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-btn') && !e.target.classList.contains('disabled')) {
