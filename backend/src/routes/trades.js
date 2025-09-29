@@ -67,6 +67,20 @@ router.post('/share', async (req, res) => {
     }
 });
 
+// Добавь этот роут в файл backend/src/routes/trades.js
+router.put('/:id', async (req, res) => {
+    try {
+        const tradeId = req.params.id;
+        const updatedTrade = req.body;
+        
+        await database.updateTrade(tradeId, updatedTrade);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating trade:', error);
+        res.status(500).json({ error: 'Failed to update trade' });
+    }
+});
+
 // Получение публичной ссылки
 router.get('/share/:shareId', async (req, res) => {
     try {
@@ -94,5 +108,7 @@ router.get('/share/:shareId', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch share' });
     }
 });
+
+
 
 export default router;

@@ -30,16 +30,28 @@ app.use(cors({
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-// Rate limiting
+// Логирование всех запросов
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
+
+// Rate limiting - увеличенные лимиты для разработки
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    max: 5000 // увеличено с 100 до 1000 запросов
 });
 app.use('/api/', limiter);
 
 // Routes
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: '😇 God & Devils 😈 API is running' });
+});
+
+// Тестовый роут для отладки
+app.get('/api/trades-test', (req, res) => {
+    console.log('Trades test route hit!');
+    res.json({ message: 'Trades test route works!' });
 });
 
 // Auth routes
@@ -50,7 +62,8 @@ app.use('/api/auth', authRoutes);
 import signalsRoutes from './routes/signals.js';
 app.use('/api/signals', signalsRoutes);
 
-// Trades routes
+// Trades routes - с отладкой
+
 import tradesRoutes from './routes/trades.js';
 app.use('/api/trades', tradesRoutes);
 
@@ -184,15 +197,18 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-    res.status(404).json({ error: 'Route not found' });
-});
+
 
 
 
 // WebSocket сервер для сигналов
 const signalsWS = new SignalsWebSocket(server);
+
+// 404 handler - ДОЛЖЕН БЫТЬ ПОСЛЕДНИМ
+app.use('*', (req, res) => {
+    res.status(404).json({ error: 'Route not found' });
+});
+
 signalsWS.start();
 
 // Глобальный объект для доступа к WebSocket из других модулей

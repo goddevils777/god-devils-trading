@@ -318,6 +318,40 @@ class Database {
             });
         });
     }
+
+    // Добавь этот метод в конец класса Database перед закрывающей скобкой:
+    updateTrade(tradeId, updatedTrade) {
+        return new Promise((resolve, reject) => {
+            const query = `
+            UPDATE trades SET 
+                type = ?, currency = ?, date = ?, result = ?, 
+                category = ?, screenshotData = ?, groupId = ?, groupName = ?
+            WHERE id = ?
+        `;
+
+            const values = [
+                updatedTrade.type,
+                updatedTrade.currency,
+                updatedTrade.date,
+                updatedTrade.result,
+                updatedTrade.category || null,
+                updatedTrade.screenshotData || null,
+                updatedTrade.groupId || null,
+                updatedTrade.groupName || null,
+                tradeId
+            ];
+
+            this.db.run(query, values, function (err) {
+                if (err) {
+                    console.error('❌ Error updating trade:', err);
+                    reject(err);
+                } else {
+                    console.log('✅ Trade updated in database:', tradeId);
+                    resolve({ changes: this.changes });
+                }
+            });
+        });
+    }
 }
 
 
