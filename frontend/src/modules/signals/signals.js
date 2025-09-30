@@ -5,7 +5,10 @@ export class SignalsModule {
     constructor() {
         this.signals = [];
         this.wsConnection = null;
-        this.apiUrl = 'https://god-devils-trade.fly.dev/api';
+        // Определяем окружение
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        this.apiUrl = isLocal ? 'http://localhost:8080/api' : 'https://god-devils-trade.fly.dev/api';
+        this.wsUrl = isLocal ? 'ws://localhost:8080' : 'wss://god-devils-trade.fly.dev';
         this.currentTypeFilter = 'all';
         this.currentTimeFilter = 'all';
         this.loadSavedSignals();
@@ -165,7 +168,7 @@ export class SignalsModule {
             console.log('📥 Response data:', data);
 
             if (data.success) {
-                this.signals = data.signals;
+                this.signals = [...this.signals, ...data.signals.filter(s => !this.signals.find(existing => existing.id === s.id))];
                 console.log(`📊 Loaded ${data.signals.length} saved signals`);
                 console.log('📋 Signals array:', this.signals);
 
@@ -263,7 +266,7 @@ export class SignalsModule {
 
     connectWebSocket() {
         try {
-            this.wsConnection = new WebSocket('wss://god-devils-trade.fly.dev');
+            this.wsConnection = new WebSocket(this.wsUrl);
 
             this.wsConnection.onopen = () => {
                 console.log('🔌 Connected to signals WebSocket');

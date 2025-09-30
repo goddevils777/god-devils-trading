@@ -35,20 +35,39 @@ export class BacktestModule {
                 const tradesWithScreenshots = dbTrades.filter(t => t.screenshotData);
                 console.log(`📸 Сделок со скриншотами: ${tradesWithScreenshots.length}`);
 
-                this.trades = dbTrades;
-                // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+                // ИСПРАВЛЕНИЕ: Используем данные из базы как приоритетные + конвертируем result в число
+                this.trades = dbTrades.map(trade => ({
+                    ...trade,
+                    result: parseFloat(trade.result) // Принудительно конвертируем в число
+                }));
+                console.log(`✅ Загружено ${this.trades.length} сделок из базы данных`);
 
             } else {
                 console.log('⚠️ Не удалось загрузить из базы, используем localStorage');
-                this.trades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
-                // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+                const localTrades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
+
+                // ИСПРАВЛЕНИЕ: Если есть локальные данные, но нет базы - отправляем их в базу
+                if (localTrades.length > 0) {
+                    console.log(`📤 Загружено ${localTrades.length} сделок из localStorage, синхронизируем с базой...`);
+                    this.trades = localTrades.map(trade => ({
+                        ...trade,
+                        result: parseFloat(trade.result) // Конвертируем и здесь
+                    }));
+                    this.syncToDatabase(); // Отправляем в базу
+                } else {
+                    this.trades = [];
+                }
             }
 
-            console.log(`✅ Загружено ${this.trades.length} сделок`);
+            console.log(`✅ Итого загружено ${this.trades.length} сделок`);
         } catch (error) {
             console.error('❌ Ошибка загрузки сделок:', error);
-            this.trades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
-            // УБЕРИ ЭТУ СТРОКУ: this.sortTrades();
+            const localTrades = JSON.parse(localStorage.getItem('backtestTrades')) || [];
+            this.trades = localTrades.map(trade => ({
+                ...trade,
+                result: parseFloat(trade.result) // Конвертируем и в fallback
+            }));
+            console.log(`⚠️ Fallback: загружено ${this.trades.length} сделок из localStorage`);
         }
     }
 
@@ -59,7 +78,15 @@ export class BacktestModule {
         return `
         <div class="backtest-container">
             <div class="backtest-header">
-                <h2>📊 Backtest Journal</h2>
+                <h2>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="backtest-icon">
+        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 10h8M8 14h8" stroke="currentColor" stroke-width="2"/>
+        <circle cx="7" cy="7" r="1" fill="currentColor"/>
+        <path d="M16 7l1 1-3 3" stroke="#0ecb81" stroke-width="2" fill="none"/>
+    </svg>
+    Backtest Journal
+</h2>
                 <div class="header-actions">
                     <button class="clear-all-btn" id="clearAllBtn">Очистить журнал</button>
                     <button class="group-trades-btn" id="groupTradesBtn">Сгруппировать</button>
@@ -122,17 +149,40 @@ export class BacktestModule {
                 </select>
             </div>
         </div>
-        
+
         <div class="form-row">
-            <div class="form-group">
-                <label>Дата</label>
-                <div class="date-controls">
-                    <button type="button" class="date-btn" id="prevDateBtn">←</button>
-                    <input type="date" name="date" value="${nextDate}" required>
-                    <button type="button" class="date-btn" id="nextDateBtn">→</button>
+            <div class="form-group full-width">
+                <div class="checklist-container">
+                    <div class="checklist-header">
+                        <h4>Чек-лист сделки</h4>
+                        <div class="checklist-stats">
+                            <span id="checklistScore">0/5</span>
+                            <div class="checklist-emoji" id="checklistEmoji">🌙</div>
+                            <button type="button" class="edit-checklist-btn" id="editChecklistBtn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="checklist-items" id="checklistItems">
+                        ${this.renderChecklistItems()}
+                    </div>
                 </div>
             </div>
         </div>
+        
+<div class="form-row">
+    <div class="form-group">
+        <label class="date-label-highlight">Дата</label>
+        <div class="date-controls">
+            <button type="button" class="date-btn" id="prevDateBtn">←</button>
+            <input type="date" name="date" value="${nextDate}" required>
+            <button type="button" class="date-btn" id="nextDateBtn">→</button>
+        </div>
+    </div>
+</div>
 
 <div class="form-row">
             <div class="form-group full-width">
@@ -204,6 +254,44 @@ export class BacktestModule {
     </form>
 </div>
 `;
+    }
+
+    renderChecklistItems() {
+        const defaultItems = JSON.parse(localStorage.getItem('tradeChecklist')) || [
+            'Проверен тренд на старших ТФ',
+            'Подтвержден сигнал индикаторами',
+            'Проверены уровни поддержки/сопротивления',
+            'Установлен стоп-лосс',
+            'Рассчитан риск-менеджмент'
+        ];
+
+        return defaultItems.map((item, index) => `
+        <label class="checklist-item">
+            <input type="checkbox" class="checklist-checkbox" data-index="${index}" onchange="window.backtestModule.updateChecklistScore()">
+            <span class="checklist-text">${item}</span>
+        </label>
+    `).join('');
+    }
+
+    updateChecklistScore() {
+        const checkboxes = document.querySelectorAll('.checklist-checkbox');
+        const checked = document.querySelectorAll('.checklist-checkbox:checked').length;
+        const total = checkboxes.length;
+
+        const scoreElement = document.getElementById('checklistScore');
+        const emojiElement = document.getElementById('checklistEmoji');
+
+        if (scoreElement) scoreElement.textContent = `${checked}/${total}`;
+
+        if (emojiElement) {
+            if (checked === total) {
+                emojiElement.textContent = '☀️'; // Полное солнце
+            } else if (checked >= total * 0.6) {
+                emojiElement.textContent = '⛅'; // Солнце за облаками
+            } else {
+                emojiElement.textContent = '🌙'; // Луна
+            }
+        }
     }
 
     renderFilters() {
@@ -423,30 +511,32 @@ export class BacktestModule {
                             ${trade.result > 0 ? '+' : ''}${trade.result} RR
                         </div>
 
-<div class="trade-actions">
-                    ${(() => {
-                        console.log(`🔍 Trade ${trade.id}:`);
-                        console.log('  - screenshotData:', trade.screenshotData);
-                        console.log('  - type of screenshotData:', typeof trade.screenshotData);
-                        console.log('  - has screenshotData:', !!trade.screenshotData);
-                        console.log('  - screenshotData length:', trade.screenshotData ? trade.screenshotData.length : 'null');
-
-                        if (trade.screenshotData) {
-                            console.log('  ✅ Показываем кнопку скриншота');
-                            return `
+              
+                        <div class="trade-actions">
+                            ${trade.screenshotData ? `
                                 <button class="action-btn view-screenshot-btn" data-trade-id="${trade.id}" title="Посмотреть скриншот">
-                                    📸
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21,15 16,10 5,21"/>
+                                    </svg>
                                 </button>
-                            `;
-                        } else {
-                            console.log('  ❌ Скриншот отсутствует');
-                            return '';
-                        }
-                    })()}
-                    <button class="action-btn delete-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="Удалить сделку">
-                        🗑️
-                    </button>
-                </div>
+                            ` : ''}
+                            <button class="action-btn edit-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="Редактировать сделку">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="action-btn delete-btn ${canModify ? '' : 'disabled'}" data-id="${trade.id}" title="Удалить сделку">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3,6 5,6 21,6"/>
+                                    <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -649,14 +739,17 @@ export class BacktestModule {
         return new Date(dateStr).toLocaleDateString('ru-RU');
     }
 
+
+    // Заменить метод saveTrades() в BacktestModule
+
     saveTrades() {
         console.log('💾 saveTrades() вызван');
 
         try {
-            // Сохраняем только последние 50 сделок в localStorage (без скриншотов)
-            const tradesForLocal = this.trades.slice(0, 50).map(trade => ({
+            // Сохраняем последние 20 сделок в localStorage БЕЗ скриншотов (экономия места)
+            const tradesForLocal = this.trades.slice(0, 20).map(trade => ({
                 ...trade,
-                screenshotData: null // Убираем скриншоты из localStorage
+                screenshotData: null // Убираем скриншоты только из localStorage
             }));
 
             localStorage.setItem('backtestTrades', JSON.stringify(tradesForLocal));
@@ -665,9 +758,10 @@ export class BacktestModule {
             console.warn('⚠️ localStorage переполнен, пропускаем локальное сохранение');
         }
 
-        // Синхронизируем с базой данных (со скриншотами)
+        // Синхронизируем ВСЕ данные (включая скриншоты) с базой данных
         this.syncToDatabase();
     }
+
 
     async syncToDatabase() {
         try {
@@ -681,11 +775,11 @@ export class BacktestModule {
                 existingTrades = await checkResponse.json();
             }
 
-            const existingIds = new Set(existingTrades.map(t => t.id));
+            const existingIds = new Set(existingTrades.map(t => String(t.id)));
 
             // Синхронизируем только новые сделки СО СКРИНШОТАМИ
             for (const trade of this.trades) {
-                if (!existingIds.has(trade.id)) {
+                if (!existingIds.has(String(trade.id))) {
                     const response = await fetch('http://localhost:8080/api/trades', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -711,15 +805,20 @@ export class BacktestModule {
         console.log('🔄 addTrade вызван с данными:', tradeData);
 
         const trade = {
-            id: Date.now(),
-            type: tradeData.type,
-            currency: tradeData.currency,
-            date: tradeData.date,
-            result: tradeData.result,
-            category: tradeData.category,
+            id: Date.now() + Math.floor(Math.random() * 100000), // Увеличил диапазон
+            type: String(tradeData.type),
+            currency: String(tradeData.currency),
+            date: String(tradeData.date),
+            result: Number(tradeData.result),
+            category: tradeData.category || null,
             screenshotData: tradeData.screenshotData || null,
             createdAt: new Date().toISOString()
         };
+
+        // Проверяем что ID уникален
+        while (this.trades.find(t => t.id === trade.id)) {
+            trade.id = Date.now() + Math.floor(Math.random() * 100000);
+        }
 
         if (tradeData.category) {
             const existingGroup = this.trades.find(t => t.groupName === tradeData.category);
@@ -737,14 +836,20 @@ export class BacktestModule {
             localStorage.setItem('lastSelectedCurrency', tradeData.currency);
         }
 
-        // ИСПРАВЛЕНИЕ: Добавляем в НАЧАЛО массива, а не в конец
         this.trades.unshift(trade);
-
         this.saveTrades();
         this.updateDisplay();
 
         const screenshotText = trade.screenshotData ? ' 📸' : '';
-        notifications.success(`Сделка добавлена${screenshotText}`);
+        const dateObj = new Date(trade.date);
+        const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        const dayName = dayNames[dateObj.getDay()];
+        const monthName = monthNames[dateObj.getMonth()];
+        const year = dateObj.getFullYear();
+        const dateFormatted = `${dayName} ${monthName} ${year}`;
+
+        notifications.success(`Сделка добавлена на ${dateFormatted}${screenshotText}`);
     }
 
     // Методы для работы со скриншотами
@@ -968,10 +1073,29 @@ export class BacktestModule {
             trade.groupName = groupName;
         });
 
+        // ДОБАВЬ: Обновляем каждую сделку в базе данных
+        try {
+            for (const trade of ungroupedTrades) {
+                const response = await fetch(`http://localhost:8080/api/trades/${trade.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trade)
+                });
+
+                if (!response.ok) {
+                    console.error('Ошибка обновления сделки в базе:', trade.id);
+                }
+            }
+            console.log('✅ Группировка сохранена в базу данных');
+        } catch (error) {
+            console.error('❌ Ошибка синхронизации группировки:', error);
+        }
+
         this.saveTrades();
         this.updateDisplay();
         notifications.success(`Создана группа "${groupName}" с ${ungroupedTrades.length} сделками`);
     }
+
 
     getLastTradeDate() {
         if (this.trades.length === 0) return new Date().toISOString().split('T')[0];
@@ -997,15 +1121,18 @@ export class BacktestModule {
     updateDateLabel(dateStr) {
         const date = new Date(dateStr + 'T12:00:00');
         const daysRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
         const dayName = daysRu[date.getDay()];
+        const monthName = monthNames[date.getMonth()];
+        const year = date.getFullYear();
 
         // Ищем label для поля даты
         const dateInput = document.querySelector('input[name="date"]');
         const label = dateInput?.closest('.form-group')?.querySelector('label');
 
         if (label) {
-            const originalText = label.textContent.split('(')[0]; // Убираем старый день если есть
-            label.textContent = `${originalText}(${dayName})`;
+            label.innerHTML = `Дата (<span class="day-highlight">${dayName}</span> ${monthName} ${year})`;
         }
     }
 
@@ -1611,10 +1738,210 @@ export class BacktestModule {
         }
     }
 
+    getBacktestStats() {
+        if (this.trades.length === 0) {
+            return {
+                totalTrades: 0,
+                winRate: 0,
+                totalPnL: 0,
+                winTrades: 0,
+                lossTrades: 0,
+                maxWinStreak: 0,
+                maxLossStreak: 0,
+                avgWin: 0,
+                avgLoss: 0
+            };
+        }
+
+        const winTrades = this.trades.filter(t => t.result > 0);
+        const lossTrades = this.trades.filter(t => t.result < 0);
+        const tradesWithResult = winTrades.length + lossTrades.length;
+
+        const totalPnL = this.trades.reduce((sum, t) => sum + t.result, 0);
+        const winRate = tradesWithResult > 0 ? (winTrades.length / tradesWithResult) * 100 : 0;
+
+        const avgWin = winTrades.length > 0 ?
+            winTrades.reduce((sum, t) => sum + t.result, 0) / winTrades.length : 0;
+        const avgLoss = lossTrades.length > 0 ?
+            lossTrades.reduce((sum, t) => sum + t.result, 0) / lossTrades.length : 0;
+
+        // Расчет максимальных серий
+        const streaks = this.calculateStreaks(this.trades);
+
+        return {
+            totalTrades: this.trades.length,
+            winRate: Number(winRate.toFixed(1)),
+            totalPnL: Number(totalPnL.toFixed(2)),
+            winTrades: winTrades.length,
+            lossTrades: lossTrades.length,
+            maxWinStreak: streaks.maxWinStreak,
+            maxLossStreak: streaks.maxLossStreak,
+            avgWin: Number(avgWin.toFixed(2)),
+            avgLoss: Number(avgLoss.toFixed(2))
+        };
+    }
+
+    editTrade(tradeId) {
+        const trade = this.trades.find(t => t.id === tradeId);
+        if (!trade) return;
+
+        // Проверяем возраст сделки
+        const tradeAge = Date.now() - new Date(trade.createdAt).getTime();
+        if (tradeAge >= 300000) { // 5 минут
+            notifications.warning('Нельзя редактировать сделку (прошло больше 5 минут)');
+            return;
+        }
+
+        // Открываем форму
+        const formContainer = document.getElementById('tradeFormContainer');
+        formContainer.style.display = 'block';
+
+        // Заполняем поля формы
+        document.querySelector('input[name="date"]').value = trade.date;
+        document.querySelector('select[name="currency"]').value = trade.currency;
+        document.querySelector('select[name="category"]').value = trade.category || '';
+        document.querySelector('input[name="result"]').value = trade.result;
+
+        // Устанавливаем тип сделки
+        document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-type="${trade.type}"]`).classList.add('active');
+
+        // Подсвечиваем RR кнопку
+        document.querySelectorAll('.rr-btn').forEach(btn => btn.classList.remove('selected'));
+        const rrBtn = document.querySelector(`[data-rr="${trade.result}"]`);
+        if (rrBtn) rrBtn.classList.add('selected');
+
+        // Загружаем скриншот если есть
+        if (trade.screenshotData) {
+            this.setScreenshotPreview(trade.screenshotData);
+        }
+
+        // Обновляем день недели в дате
+        this.updateDateLabel(trade.date);
+
+        // ДОБАВЬ ПРОКРУТКУ К ФОРМЕ
+        setTimeout(() => {
+            formContainer.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }, 100);
+
+        notifications.info(`Редактирование сделки ${trade.currency} ${trade.type.toUpperCase()}`);
+    }
+
+    showChecklistEditor() {
+        const currentItems = JSON.parse(localStorage.getItem('tradeChecklist')) || [
+            'Проверен тренд на старших ТФ',
+            'Подтвержден сигнал индикаторами',
+            'Проверены уровни поддержки/сопротивления',
+            'Установлен стоп-лосс',
+            'Рассчитан риск-менеджмент'
+        ];
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-backdrop';
+        modal.innerHTML = `
+        <div class="modal checklist-modal">
+            <h3>Редактировать чек-лист</h3>
+            <div class="checklist-editor">
+                ${currentItems.map((item, index) => `
+                    <div class="editor-item">
+                        <input type="text" value="${item}" data-index="${index}" class="checklist-input">
+                        <button type="button" class="remove-item-btn" data-index="${index}">×</button>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="editor-actions">
+                <button type="button" id="addChecklistItem">+ Добавить пункт</button>
+                <div>
+                    <button type="button" id="cancelChecklistEdit">Отмена</button>
+                    <button type="button" id="saveChecklistEdit">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+        document.body.appendChild(modal);
+        this.bindChecklistEditorEvents(modal, currentItems);
+    }
+
+    bindChecklistEditorEvents(modal, currentItems) {
+        const addBtn = modal.querySelector('#addChecklistItem');
+        const saveBtn = modal.querySelector('#saveChecklistEdit');
+        const cancelBtn = modal.querySelector('#cancelChecklistEdit');
+        const editor = modal.querySelector('.checklist-editor');
+
+        // Добавление нового пункта
+        addBtn.addEventListener('click', () => {
+            const newIndex = editor.children.length;
+            const newItem = document.createElement('div');
+            newItem.className = 'editor-item';
+            newItem.innerHTML = `
+            <input type="text" placeholder="Новый пункт..." data-index="${newIndex}" class="checklist-input">
+            <button type="button" class="remove-item-btn" data-index="${newIndex}">×</button>
+        `;
+            editor.appendChild(newItem);
+            newItem.querySelector('input').focus();
+        });
+
+        // Удаление пункта
+        modal.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.remove-item-btn');
+            if (removeBtn) {
+                if (editor.children.length > 1) {
+                    removeBtn.parentElement.remove();
+                } else {
+                    notifications.warning('Должен остаться минимум 1 пункт');
+                }
+            }
+        });
+
+        // Сохранение
+        saveBtn.addEventListener('click', () => {
+            const inputs = modal.querySelectorAll('.checklist-input');
+            const newItems = Array.from(inputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+
+            if (newItems.length === 0) {
+                notifications.error('Добавьте минимум 1 пункт');
+                return;
+            }
+
+            localStorage.setItem('tradeChecklist', JSON.stringify(newItems));
+            this.updateChecklistItems();
+            document.body.removeChild(modal);
+            notifications.success('Чек-лист обновлен');
+        });
+
+        // Отмена
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
+    updateChecklistItems() {
+        const container = document.getElementById('checklistItems');
+        if (container) {
+            container.innerHTML = this.renderChecklistItems();
+            this.updateChecklistScore();
+        }
+    }
+
 
     bindEvents() {
         console.log('🎯 bindEvents() вызван');
         const self = this;
+
+        // ДОБАВЬ эту строку для доступа к модулю из HTML
+        window.backtestModule = this;
 
         // Инициализируем RR кнопки при загрузке
         this.initializeRrButtons();
@@ -1630,10 +1957,18 @@ export class BacktestModule {
         }, 100);
 
 
+        // Обработчик редактирования чек-листа
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#editChecklistBtn')) {
+                this.showChecklistEditor();
+            }
+        });
+
         // Обработчик просмотра скриншота
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('view-screenshot-btn')) {
-                const tradeId = parseInt(e.target.dataset.tradeId);
+            const screenshotBtn = e.target.closest('.view-screenshot-btn');
+            if (screenshotBtn) {
+                const tradeId = parseInt(screenshotBtn.dataset.tradeId);
                 this.showScreenshotModal(tradeId);
             }
         });
@@ -1867,6 +2202,16 @@ export class BacktestModule {
             document.getElementById('dateFromFilter').value = '';
             document.getElementById('dateToFilter').value = '';
             this.updateDisplay();
+        });
+
+
+        // НА этот (обрабатывает клики по кнопке и SVG внутри):
+        document.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn');
+            if (editBtn && !editBtn.classList.contains('disabled')) {
+                const tradeId = parseInt(editBtn.dataset.id);
+                this.editTrade(tradeId);
+            }
         });
 
         // Публичная ссылка на отфильтрованные сделки

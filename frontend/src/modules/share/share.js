@@ -332,11 +332,6 @@ export class ShareModule {
         // Обновляем навигационные кнопки
         this.updateNavigationButtons(prevBtn, nextBtn, zoomInfo);
 
-        // Закрытие
-        const closeModal = () => {
-            document.body.removeChild(modal);
-            this.resetImageTransform(img);
-        };
 
         modal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
         modal.addEventListener('click', (e) => {

@@ -1,32 +1,38 @@
 import './dashboard.css';
+import { BacktestModule } from '../backtest/backtest.js';
 
 export class DashboardModule {
     constructor() {
         this.apiUrl = 'https://god-devils-trade.fly.dev/api';
         this.stats = null;
+        this.backtestModule = new BacktestModule();
     }
 
     async render() {
         await this.loadStats();
+        await this.backtestModule.loadTrades(); // Загружаем сделки
+        const backtestStats = this.backtestModule.getBacktestStats();
         
         return `
             <div class="dashboard-container">
                 <div class="dashboard-header">
                     <h1>
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" class="dashboard-icon">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
-        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
-        <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
-        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
-        <path d="M8 14l2 2 4-4" stroke="#0ecb81" stroke-width="2" fill="none"/>
-    </svg>
-    Аналитика Сигналов
-</h1>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" class="dashboard-icon">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
+                            <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
+                            <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 14l2 2 4-4" stroke="#0ecb81" stroke-width="2" fill="none"/>
+                        </svg>
+                        Dashboard
+                    </h1>
                     <div class="last-update">
                         Обновлено: ${new Date().toLocaleString('ru-RU')}
                     </div>
                 </div>
                 
+                <!-- Статистика сигналов -->
+                <h3 style="color: var(--text-primary); margin-bottom: 16px;">📡 Статистика сигналов</h3>
                 <div class="stats-grid">
                     <div class="stat-card total">
                         <div class="stat-icon">
@@ -66,28 +72,59 @@ export class DashboardModule {
                             </svg>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-label">Сессии</div>
+                            <div class="stat-label">Последний сигнал</div>
                             <div class="session-breakdown">
-                                <div class="session-item">
-                                    <span>London:</span>
-                                    <span>${this.stats?.sessions?.london || 0}</span>
-                                </div>
-                                <div class="session-item">
-                                    <span>New York:</span>
-                                    <span>${this.stats?.sessions?.newYork || 0}</span>
-                                </div>
-                                <div class="session-item">
-                                    <span>Другие:</span>
-                                    <span>${this.stats?.sessions?.other || 0}</span>
-                                </div>
+                                ${this.renderLastSignalInfo()}
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="recent-activity">
-                    <h3>Последний сигнал</h3>
-                    ${this.renderLastSignal()}
+
+                <!-- Статистика backtest -->
+                <h3 style="color: var(--text-primary); margin: 32px 0 16px 0;">📊 Статистика торговли</h3>
+                <div class="stats-grid">
+                    <div class="stat-card total">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <div class="stat-number">${backtestStats.totalTrades}</div>
+                            <div class="stat-label">Всего сделок</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card ${backtestStats.winRate >= 50 ? 'long' : 'short'}">
+                        <div class="stat-icon">${backtestStats.winRate >= 50 ? '✅' : '📉'}</div>
+                        <div class="stat-content">
+                            <div class="stat-number">${backtestStats.winRate}%</div>
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-percentage">${backtestStats.winTrades}W / ${backtestStats.lossTrades}L</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card ${backtestStats.totalPnL >= 0 ? 'long' : 'short'}">
+                        <div class="stat-icon">${backtestStats.totalPnL >= 0 ? '💰' : '💸'}</div>
+                        <div class="stat-content">
+                            <div class="stat-number">${backtestStats.totalPnL > 0 ? '+' : ''}${backtestStats.totalPnL}</div>
+                            <div class="stat-label">Общий P&L</div>
+                            <div class="stat-percentage">RR ${backtestStats.totalPnL > 0 ? '+' : ''}${backtestStats.totalPnL}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Макс. серии</div>
+                            <div class="session-breakdown">
+                                <div class="session-item">
+                                    <span>Прибыльных:</span>
+                                    <span style="color: var(--green-primary);">${backtestStats.maxWinStreak}</span>
+                                </div>
+                                <div class="session-item">
+                                    <span>Убыточных:</span>
+                                    <span style="color: var(--red-primary);">${backtestStats.maxLossStreak}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -109,11 +146,11 @@ export class DashboardModule {
         return Math.round((this.stats[type] / this.stats.total) * 100);
     }
 
-    renderLastSignal() {
+    renderLastSignalInfo() {
         if (!this.stats?.lastSignal) {
             return `
-                <div class="no-recent-signal">
-                    <p>Пока нет сигналов</p>
+                <div class="session-item">
+                    <span>Нет сигналов</span>
                 </div>
             `;
         }
@@ -122,18 +159,13 @@ export class DashboardModule {
         const timeAgo = this.getTimeAgo(signal.createdAt);
         
         return `
-            <div class="last-signal-card ${signal.type}">
-                <div class="signal-icon">
-                    ${signal.type === 'long' ? '😇' : '😈'}
-                </div>
-                <div class="signal-details">
-                    <div class="signal-type">${signal.type.toUpperCase()}</div>
-                    <div class="signal-info">
-                        <span>${signal.symbol}</span>
-                        <span>${signal.session}</span>
-                        <span>${timeAgo}</span>
-                    </div>
-                </div>
+            <div class="session-item">
+                <span>${signal.type.toUpperCase()}:</span>
+                <span>${signal.symbol}</span>
+            </div>
+            <div class="session-item">
+                <span>Время:</span>
+                <span>${timeAgo}</span>
             </div>
         `;
     }

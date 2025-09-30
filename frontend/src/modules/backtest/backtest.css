@@ -1550,7 +1550,7 @@ input[type="date"]::-moz-focus-inner {
     background: transparent;
     border-radius: 4px;
     margin: 0;
-    text-align: center;
+    text-align: left;
 }
 
 .date-controls input[type="date"]:focus {
@@ -2174,4 +2174,361 @@ body.modal-open {
     color: #000;
     border-color: var(--yellow-primary);
     transform: scale(1.02);
+}
+
+.backtest-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.backtest-icon {
+    color: var(--yellow-primary);
+}
+
+/* Добавь эти стили для кнопки редактирования */
+.edit-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.edit-btn:hover:not(.disabled) {
+    background: var(--blue-primary, #3b82f6);
+    border-color: var(--blue-primary, #3b82f6);
+    color: white;
+    transform: scale(1.1);
+}
+
+.edit-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.edit-btn svg {
+    transition: stroke 0.2s ease;
+}
+
+.edit-btn:hover:not(.disabled) svg {
+    stroke: white;
+}
+
+.edit-btn svg {
+    pointer-events: none; /* SVG не будет перехватывать клики */
+}
+
+/* Чек-лист - оптимальная версия */
+.checklist-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.checklist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checklist-header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.checklist-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checklist-stats span {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-primary);
+}
+
+.checklist-emoji {
+    font-size: 24px;
+}
+
+.edit-checklist-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-checklist-btn:hover {
+    background: var(--blue-primary);
+    border-color: var(--blue-primary);
+    color: white;
+}
+
+.checklist-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.checklist-item {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Увеличил высоту */
+}
+
+
+
+
+.checklist-item:hover {
+    border-color: var(--border-primary);
+}
+
+.checklist-item:has(.checklist-checkbox:checked) {
+    background: rgba(14, 203, 129, 0.1);
+    border-color: var(--green-primary);
+}
+
+
+
+.checklist-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--green-primary);
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+}
+
+.checklist-text {
+    font-size: 14px;
+    color: var(--text-primary);
+    user-select: none;
+    cursor: pointer;
+    line-height: 1.4;
+    margin-left: 28px;
+    display: flex;
+    align-items: center; /* Выравниваем текст по центру */
+    min-height: 24px; /* Минимальная высота для текста */
+    word-wrap: break-word; /* Перенос длинных слов */
+}
+
+
+.checklist-item:has(.checklist-checkbox:checked) .checklist-text {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Стили для редактора чек-листа */
+.checklist-modal {
+    width: 500px;
+    max-width: 90vw;
+}
+
+.checklist-editor {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.editor-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.checklist-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.checklist-input:focus {
+    outline: none;
+    border-color: var(--blue-primary);
+}
+
+.remove-item-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--red-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-item-btn:hover {
+    background: #dc2626;
+}
+
+.editor-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.editor-actions > div {
+    display: flex;
+    gap: 8px;
+}
+
+#addChecklistItem {
+    background: var(--green-primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#addChecklistItem:hover {
+    background: #059669;
+}
+
+.editor-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.checklist-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    height: 40px; /* Вернул больший размер */
+    box-sizing: border-box;
+}
+
+.checklist-input:focus {
+    outline: none;
+    border-color: var(--blue-primary);
+}
+
+.remove-item-btn {
+    width: 40px;
+    height: 40px; /* Такая же высота как у поля */
+    background: var(--red-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.remove-item-btn:hover {
+    background: #dc2626;
+}
+
+/* Кнопки в стиле сайта */
+#cancelChecklistEdit, #saveChecklistEdit {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+#cancelChecklistEdit {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+}
+
+#cancelChecklistEdit:hover {
+    background: var(--bg-primary);
+    transform: translateY(-1px);
+}
+
+#saveChecklistEdit {
+    background: var(--blue-primary);
+    color: white;
+}
+
+#saveChecklistEdit:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+/* Выделение блока даты */
+.date-label-highlight {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--blue-primary);
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.date-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+}
+
+input[name="date"] {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.day-highlight {
+    color: var(--yellow-primary);
+    font-weight: 700;
+    font-size: 16px;
 }
